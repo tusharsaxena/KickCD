@@ -378,36 +378,86 @@ test("IsSpellAvailable rejects a non-number spell ID outright", function()
     assertFalse(Compat.IsSpellAvailable(nil))
 end)
 
-test("IsSpellAvailable is true when IsPlayerSpell says so", function()
+-- MKF-KC-03: availability reads C_SpellBook on both clients, exactly as the deprecated shims did
+-- (Blizzard_DeprecatedSpellBook/Deprecated_SpellBook.lua): IsSpellKnown on the player's bank, then
+-- IsSpellInSpellBook without overrides on the player's bank, then on the pet's. The shims exist only
+-- while the CVar loadDeprecationFallbacks is on; the addon no longer asks them.
+
+--- A C_SpellBook whose answers come from `known[bank][method]`, recording every call as
+--- "method:id:bank:includeOverrides".
+local function spellBook(mocks, known)
+    local calls = {}
+    local function ask(method)
+        return function(id, bank, includeOverrides)
+            calls[#calls + 1] = ("%s:%s:%s:%s"):format(method, tostring(id), tostring(bank), tostring(includeOverrides))
+            local byBank = known[bank] or {}
+            return byBank[method] == true
+        end
+    end
+    mocks.C_SpellBook = { IsSpellKnown = ask("IsSpellKnown"), IsSpellInSpellBook = ask("IsSpellInSpellBook") }
+    return calls
+end
+
+test("IsSpellAvailable is true when C_SpellBook knows it on the player's bank", function()
     local Compat, mocks = fresh()
-    mocks.IsPlayerSpell = function() return true end
+    local calls = spellBook(mocks, { [0] = { IsSpellKnown = true } })
     assertTrue(Compat.IsSpellAvailable(1766))
+    assertEqual(calls[1], "IsSpellKnown:1766:0:nil", "IsPlayerSpell's own call")
 end)
 
-test("IsSpellAvailable falls back to the spellbook for racials and professions", function()
-    -- Some known spells never report true from IsPlayerSpell.
+test("IsSpellAvailable falls back to the player's spellbook for racials and professions", function()
+    -- Some known spells never report true from IsSpellKnown (IsPlayerSpell's body).
     local Compat, mocks = fresh()
-    mocks.IsPlayerSpell = function() return false end
-    mocks.IsSpellKnown = function(_, pet) return not pet end
+    local calls = spellBook(mocks, { [0] = { IsSpellInSpellBook = true } })
     assertTrue(Compat.IsSpellAvailable(1766))
+    assertEqual(calls[2], "IsSpellInSpellBook:1766:0:false", "IsSpellKnown(id)'s own call, without overrides")
 end)
 
-test("IsSpellAvailable catches PET spells via the IsSpellKnown pet flag", function()
-    -- Counter Shot / Spell Lock / Optical Blast only exist while the right
-    -- pet is out — that branch is the reason the second call passes `true`.
+test("IsSpellAvailable catches PET spells on the pet's bank", function()
+    -- Counter Shot / Spell Lock / Optical Blast only exist while the right pet is out.
     local Compat, mocks = fresh()
-    mocks.IsPlayerSpell = function() return false end
-    mocks.IsSpellKnown = function(_, pet) return pet == true end
+    local calls = spellBook(mocks, { [1] = { IsSpellInSpellBook = true } })
     assertTrue(Compat.IsSpellAvailable(147362))
+    assertEqual(calls[3], "IsSpellInSpellBook:147362:1:false", "IsSpellKnown(id, true)'s own call")
 end)
 
 test("IsSpellAvailable is false for an unpicked talent choice-node sibling", function()
     -- The case the function exists for: both siblings are in the spell DB,
     -- only the chosen one is castable, and only one may render.
     local Compat, mocks = fresh()
-    mocks.IsPlayerSpell = function() return false end
-    mocks.IsSpellKnown = function() return false end
+    local calls = spellBook(mocks, {})
     assertFalse(Compat.IsSpellAvailable(108199))
+    assertEqual(#calls, 3, "every rung was asked")
+end)
+
+test("IsSpellAvailable never asks the deprecated shims, which a client may not load", function()
+    -- red under: the IsPlayerSpell / IsSpellKnown ladder. The shims answer false here while the
+    -- namespace answers true, so a call through them reads unavailable.
+    local Compat, mocks = fresh()
+    spellBook(mocks, { [0] = { IsSpellKnown = true } })
+    local asked = 0
+    mocks.IsPlayerSpell = function() asked = asked + 1; return false end
+    mocks.IsSpellKnown = function() asked = asked + 1; return false end
+    assertTrue(Compat.IsSpellAvailable(1766))
+    assertEqual(asked, 0)
+end)
+
+test("IsSpellAvailable answers false with C_SpellBook absent, never raising", function()
+    local Compat, mocks = fresh()
+    mocks.C_SpellBook = nil
+    assertFalse(Compat.IsSpellAvailable(1766))
+end)
+
+test("IsSpellAvailable on WoW Forever: a taught rank, a pet's Spell Lock, nothing untaught", function()
+    -- The Forever world has no shims at all and knows a rank only once it is taught.
+    local inst = T.load(false, false, function(m)
+        m.__learn({ 6554 })
+        m.__learn({ 19244 }, 1)
+    end, { world = "forever" })
+    local Compat = inst.NS.Compat
+    assertTrue(Compat.IsSpellAvailable(6554), "Pummel rank 2, taught")
+    assertFalse(Compat.IsSpellAvailable(6552), "rank 1 untaught")
+    assertTrue(Compat.IsSpellAvailable(19244), "the Felhunter's Spell Lock on the pet's bank")
 end)
 
 -- ── IsSpellUsable ───────────────────────────────────────────────────────────

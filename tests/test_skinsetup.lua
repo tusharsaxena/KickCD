@@ -16,6 +16,10 @@ local inst = T.load(true, true)
 local NS, mocks = inst.NS, inst.mocks
 local Skin = mocks.LibStub("LibKa0s-Skin-1.0")
 local OWNER = "KickCD"
+-- The client's default skin on the running kit profile (skinning-§2): Ka0s Default on Retail, the
+-- WoW Forever skin under `KA0S_KIT_CLIENT=forever`. Typed per profile rather than read back from the
+-- library, so a default that stopped following the client would still go red.
+local CLIENT_SKIN = os.getenv("KA0S_KIT_CLIENT") == "forever" and "forever" or "ka0s"
 
 -- ONE listener for the whole file: the library keeps a listener for the session, so each case
 -- resets the counter instead of registering again.
@@ -62,7 +66,7 @@ test("Skin seam: the owner is the folder name, and NS.Skin is its facade", funct
     assertEqual(Skin:OwnerLabel(OWNER), "Ka0s KickCD", "the copy confirmation names the addon by its brand")
 end)
 
-test("Skin seam: the read answers Ka0s Default before the profile store exists", function()
+test("Skin seam: the read answers the client's default skin before the profile store exists", function()
     -- RegisterOwner calls `get` at FILE LOAD, before Database:Init; a getter that raised there
     -- would be a visible Lua error on every login.
     local db = NS.db
@@ -71,17 +75,17 @@ test("Skin seam: the read answers Ka0s Default before the profile store exists",
     NS.db = db
     assertTrue(ok, "NS.SkinChoice raised without a store: " .. tostring(source))
     assertEqual(source, "ka0s")
-    assertEqual(skin, "ka0s")
+    assertEqual(skin, CLIENT_SKIN)
 end)
 
 -- ── the keys and the rows ────────────────────────────────────────────────────────────────────
 
-test("Skin seam: the eight skin keys default to Ka0s Default, today's Scope and HUD text only", function()
+test("Skin seam: the eight skin keys default to the client's skin, today's Scope and HUD text only", function()
     -- red under: a default other than today's look, or pickerSeen true (owner ruling O3: the
     -- first-run picker shows once on every profile, old and new).
     local d = NS.DEFAULT_PROFILE.skin
     assertEqual(d.source, "ka0s")
-    assertEqual(d.skin, "ka0s")
+    assertEqual(d.skin, CLIENT_SKIN)
     assertEqual(d.ignorePanel, true)
     assertEqual(d.ignoreFonts, false)
     assertEqual(d.font, "")
@@ -172,11 +176,11 @@ test("Skin seam: a profile switch applies the new profile's skin, Scope and over
     if not ok then error(err, 0) end
 end))
 
-test("Skin seam: a profile reset takes the skin back to Ka0s Default", clean(function()
+test("Skin seam: a profile reset takes the skin back to the client's default", clean(function()
     NS.Settings.Store.Set("skin.skin", "obsidian")
     NS.db:ResetProfile()
-    assertEqual(NS.db.profile.skin.skin, "ka0s")
-    assertEqual(select(2, Skin:GetChoice(OWNER)), "ka0s", "the reset did not repaint to Ka0s Default")
+    assertEqual(NS.db.profile.skin.skin, CLIENT_SKIN)
+    assertEqual(select(2, Skin:GetChoice(OWNER)), CLIENT_SKIN, "the reset did not repaint to the client's default")
 end))
 
 -- ── the owner handed to the library's factories ──────────────────────────────────────────────
@@ -241,7 +245,8 @@ test("the profile default and the pre-store fallback name the library's DefaultS
     local source, skin = pNS.SkinChoice()
     assertEqual(source, "ka0s")
     assertEqual(skin, "forever", "the pre-store fallback")
-    -- On Retail, as this addon ships, the answer is Ka0s Default, so nothing a player sees moves.
-    assertEqual(NS.DEFAULT_SKIN, "ka0s")
-    assertEqual(NS.DEFAULT_PROFILE.skin.skin, "ka0s")
+    -- The shared instance answers the running client: Ka0s Default on Retail, so nothing a Retail
+    -- player sees moves, and the WoW Forever skin on that client.
+    assertEqual(NS.DEFAULT_SKIN, CLIENT_SKIN)
+    assertEqual(NS.DEFAULT_PROFILE.skin.skin, CLIENT_SKIN)
 end)

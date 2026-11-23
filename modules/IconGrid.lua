@@ -59,6 +59,9 @@ local IconGrid = NS:NewModule("IconGrid", "AceEvent-3.0")
 -- file load, never through an NS lookup on the hot path. core/PerfSetup.lua
 -- loads before modules/, so this is always the real instance or its stub.
 local Perf = NS.Perf
+-- The one rank resolver (core/SpellRanks.lua, MKF-KC-09). An icon is keyed by its stored row's id;
+-- its texture, tooltip and cooldown are the resolved id's, and the dedupe is on the resolved id.
+local Ranks = NS.SpellRanks
 
 -- ---------------------------------------------------------------------------
 -- Per-unit instances
@@ -85,8 +88,11 @@ local instances = {}   -- [unit] = instance
 -- The cast filter's FIXED event set, every one refreshing the unit's
 -- "*_casting" visibility and glow. FILE SCOPE so an enable allocates nothing
 -- (anti-patterns #43). EMPOWER_* is an Evoker's empowered cast, which reads as a
--- channel but fires its own start/update/stop instead of CHANNEL_*.
-local ICON_CAST_ROUTES = {
+-- channel but fires its own start/update/stop instead of CHANNEL_*. It is
+-- Retail's alone, so its three routes join by declaration on Retail and are never
+-- registered on WoW Forever, which has no Evoker (clients-§4; the Forever port's
+-- critic L2, MKF-KC-15).
+local ICON_CAST_ROUTES = NS.Util.AddClientRoutes({
     UNIT_SPELLCAST_START             = "OnUnitCastEvent",
     UNIT_SPELLCAST_STOP              = "OnUnitCastEvent",
     UNIT_SPELLCAST_FAILED            = "OnUnitCastEvent",
@@ -95,10 +101,11 @@ local ICON_CAST_ROUTES = {
     UNIT_SPELLCAST_CHANNEL_STOP      = "OnUnitCastEvent",
     UNIT_SPELLCAST_INTERRUPTIBLE     = "OnUnitCastEvent",
     UNIT_SPELLCAST_NOT_INTERRUPTIBLE = "OnUnitCastEvent",
+}, {
     UNIT_SPELLCAST_EMPOWER_START     = "OnUnitCastEvent",
     UNIT_SPELLCAST_EMPOWER_UPDATE    = "OnUnitCastEvent",
     UNIT_SPELLCAST_EMPOWER_STOP      = "OnUnitCastEvent",
-}
+}, { "retail" })
 
 local function newInstance(unit)
     return {
@@ -271,8 +278,10 @@ end
 --- Pet spells (Counter Shot, Spell Lock) are likewise hidden until
 --- their pet is summoned.
 local function isRenderable(spellID)
-    local name      = NS.Compat.GetSpellInfo(spellID)
-    local available = NS.Compat.IsSpellAvailable(spellID)
+    -- The name is the resolved id's; availability is the resolver's, of the base rank the
+    -- spellbook holds, so a form's override (Feral Charge, MKF-KC-10) keeps the slot.
+    local name      = NS.Compat.GetSpellInfo(Ranks.Resolve(spellID))
+    local available = Ranks.IsAvailable(spellID)
     return name and available
 end
 
@@ -302,7 +311,7 @@ end
 --- them from tainted execution — so skip the call and leave the icon blank
 --- rather than erroring out of BuildActiveList partway.
 local function applySpellTexture(btn, spellID)
-    local tex = NS.Compat.GetSpellTexture(spellID)
+    local tex = NS.Compat.GetSpellTexture(Ranks.Resolve(spellID))
     local texSecret = tex ~= nil and NS.Compat.IsSecret(tex)
     if tex and not texSecret then btn.icon:SetTexture(tex) end
 end
@@ -333,17 +342,19 @@ local function seedIcon(grid, inst, spellID)
     table.insert(inst.ordered, btn)
 end
 
---- Walk the list into the pool, deduped by spellID. With `trace` (debug on)
---- the skipped IDs are collected for logActiveList's one summary line, in
---- place of the per-duplicate line this used to write (debug-logging-§9).
+--- Walk the list into the pool, deduped by the RESOLVED spellID (on WoW Forever two ranks of one
+--- family are one cooldown, so one icon; on Retail the resolved id is the id). With `trace` (debug
+--- on) the skipped IDs are collected for logActiveList's one summary line, in place of the
+--- per-duplicate line this used to write (debug-logging-§9).
 local function seedList(grid, inst, list, trace)
     local seen = {}
     for _, entry in ipairs(list) do
         local spellID = eligibleSpellID(entry)
-        if spellID and seen[spellID] then
+        local live = spellID and Ranks.Resolve(spellID)
+        if spellID and seen[live] then
             if trace then trace.dup[#trace.dup + 1] = spellID end
         elseif spellID then
-            seen[spellID] = true
+            seen[live] = true
             -- Hide entries the player can't see in their own spellbook.
             if isRenderable(spellID) then
                 seedIcon(grid, inst, spellID)
@@ -356,6 +367,8 @@ end
 
 function IconGrid:BuildActiveList(inst)
     self:ReleaseAll(inst)
+    -- A build reads the known ranks afresh (it runs on the spellbook and talent events too).
+    Ranks.Invalidate()
 
     if not (NS.db and NS.db.profile) then return end
 
@@ -764,6 +777,12 @@ local LIFECYCLE_EVENTS = {
     { "PLAYER_FOCUS_CHANGED",          "OnFocusChanged" },
 }
 
+-- WoW Forever's own rows, registered only there (clients-§4, by declaration): a form change swaps
+-- Feral Charge's spell and icon (core/SpellRanks.lua, MKF-KC-10, critic C4).
+local FOREVER_EVENTS = {
+    { "UPDATE_SHAPESHIFT_FORM",        "OnSpellsChanged" },
+}
+
 --- The module's GAME-event registrations, split out of OnEnable so a perf
 --- Resume can re-arm exactly the same set without re-running the rest of the
 --- enable path (rebuilding curves, re-subscribing to messages it never dropped).
@@ -771,6 +790,7 @@ local LIFECYCLE_EVENTS = {
 --- this twice is harmless.
 function IconGrid:RegisterLifecycleEvents()
     NS.RegisterEventList(self, LIFECYCLE_EVENTS)
+    if NS.Compat.ForClient({ "forever" }) then NS.RegisterEventList(self, FOREVER_EVENTS) end
 end
 
 function IconGrid:OnEnable()

@@ -542,7 +542,7 @@ test("the Cooldown Manager cache's invalidator is in the set, and stands down wi
     setEnabled(inst, true)
     assertEqual(spellInputEvents(inst), "PLAYER_SPECIALIZATION_CHANGED,TRAIT_CONFIG_UPDATED",
         "and the stand-up puts it back")
-end)
+end, T.RETAIL_ONLY)
 
 test("RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot", function()
     -- performance-§6, applied to the latch in full. A setting changed while the addon was down has to

@@ -131,9 +131,11 @@ end
 --   cooldown has ended
 local function liveHandle(icon, branch)
     if branch == 1 then
-        local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(icon.spellID)
+        -- The resolved id (core/SpellRanks.lua, MKF-KC-09): a cache read, never a rank walk.
+        local live = NS.SpellRanks.Resolve(icon.spellID)
+        local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(live)
         if not isActive then return nil, true end
-        return NS.Compat.GetSpellCooldownDuration(icon.spellID), false
+        return NS.Compat.GetSpellCooldownDuration(live), false
     end
     return Cooldowns and Cooldowns.RechargeHandle(icon.spellID), false
 end

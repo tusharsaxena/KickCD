@@ -22,7 +22,12 @@ local MUST_WRAP = {
     "UnitCastingDuration", "UnitChannelDuration",
     "GetSpellCooldown", "GetSpellCooldownDuration", "GetSpellCharges", "IsSpellUsable",
 }
-local PURE = { "IsSecret", "_firstReturn", "NewDuration", "DebugInterrupt" }
+-- The five pure members of core/Compat.lua, then core/CompatClient.lua's six (the client and how
+-- it spells a name), all facts of the install.
+local PURE = {
+    "IsSecret", "_firstReturn", "NewDuration", "DebugInterrupt", "InterruptFlag",
+    "IsForever", "IsRetail", "ClientKey", "ForClient", "RegionalNames", "UnitCharacterName",
+}
 
 local NEEDS = "The simulator needs LibKa0s-Sim-1.0."
 
@@ -88,12 +93,13 @@ test("Sim seam: idle, a wrapped member answers exactly what the client answers",
     assertEqual(env.NS.Compat.UnitExists("focus"), false)
 end)
 
-test("TOC: core/SimSetup.lua loads straight after core/Compat.lua, under a LOAD-BEARING comment", function()
+test("TOC: core/SimSetup.lua loads straight after the compat family, under a LOAD-BEARING comment", function()
     -- red under: moving the line, or dropping the comment that keeps it there
     local at
     for i, rel in ipairs(T.tocFiles) do if rel == "core/Compat.lua" then at = i end end
     assertTrue(at ~= nil, "core/Compat.lua is not in KickCD.toc")
-    assertEqual(T.tocFiles[at + 1], "core/SimSetup.lua")
+    assertEqual(T.tocFiles[at + 1], "core/CompatClient.lua")
+    assertEqual(T.tocFiles[at + 2], "core/SimSetup.lua")
     local fh = assert(io.open(T.root .. "/KickCD.toc", "r"))
     local lines = {}
     for line in fh:lines() do lines[#lines + 1] = (line:gsub("\r$", "")) end

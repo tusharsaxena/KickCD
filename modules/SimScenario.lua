@@ -13,6 +13,7 @@ local _, NS = ...
 --   pull   the combat gate, target and focus casting at once, a channel on the focus, your kick's
 --          cooldown, the party's kicks, the CC's GCD on every other on-GCD spell, a death
 --   boss   your kick's two charges: the badge counts 2 -> 1 -> 0, the recharge swipe, the expiry
+--          (on WoW Forever, where no kick has charges, your kick's cooldown instead)
 --   miss   an uninterruptible cast, its shield breaking, a kick refused on cooldown, a cast that
 --          completes, the kick coming back
 --   leave  a roster change no handler reads, then a target swap onto a cast already in progress
@@ -47,35 +48,75 @@ local SC = NS.SimScenario
 --
 -- FALLBACK. Without the library the sim cannot run (core/SimSetup.lua's stub refuses it), but the
 -- table is still built at load, so it is built from a copy of the library's rows (Sim
--- version-3.3.11.4 docs, *The data*). tests/test_sim_e2e.lua holds the copy to the library's set.
-local KICKS = {
-    HUNTER  = 147362, -- Counter Shot
-    PALADIN = 96231,  -- Rebuke
-    MAGE    = 2139,   -- Counterspell
-    WARRIOR = 6552,   -- Pummel
+-- version-3.3.11.4 docs, *The data*), one set per client as the library keeps them: Retail's carry a
+-- specID, WoW Forever's a surname and a talent tree instead (preview-mode; forever-quirks-§4).
+-- tests/test_sim_e2e.lua holds the copy to the library's set on both kit profiles.
+--
+-- PER CLIENT (the WoW Forever port, MKF-KC-15; the synthesis 3.4 "Sim"). Each client's kick by
+-- class: WoW Forever's Hunters and Paladins reach no interrupt (the research's FC 54), so its party
+-- is Mockflame and Mockshield, and the Protection sample carries a shield, so his kick is Shield
+-- Bash 72 rather than Pummel, which wants Berserker Stance there. Picked once, by the client key.
+local KICKS_BY_CLIENT = {
+    retail = {
+        HUNTER  = 147362, -- Counter Shot
+        PALADIN = 96231,  -- Rebuke
+        MAGE    = 2139,   -- Counterspell
+        WARRIOR = 6552,   -- Pummel
+    },
+    forever = {
+        MAGE    = 2139,   -- Counterspell
+        WARRIOR = 72,     -- Shield Bash
+    },
 }
 local SAMPLE_COPY = {
-    { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", specID = 253 },
-    { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   specID = 70 },
-    { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          specID = 63 },
-    { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          specID = 257 },
-    { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    specID = 73 },
+    retail = {
+        { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", specID = 253 },
+        { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   specID = 70 },
+        { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          specID = 63 },
+        { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          specID = 257 },
+        { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    specID = 73 },
+    },
+    forever = {
+        { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", surname = "Mockstride", tree = 1 },
+        { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   surname = "Mockvale", tree = 3 },
+        { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          surname = "Samplewick", tree = 2 },
+        { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          surname = "Mockbrook", tree = 2 },
+        { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    surname = "Sampleforge", tree = 3 },
+    },
 }
+
+--- "forever" on WoW Forever, else "retail": the key every per-client table below is picked by, as
+--- the library picks its sample set (Retail's on a client that is neither).
+local function clientKey()
+    local Compat = NS.Compat
+    local key = Compat and Compat.ClientKey and Compat.ClientKey()
+    return key == "forever" and "forever" or "retail"
+end
+SC.CLIENT = clientKey()
 
 --- The sample rows for the running client: the library's copy, or ours without it.
 local function sampleRows()
     local Sim = LibStub and LibStub("LibKa0s-Sim-1.0", true)
     if Sim and Sim.Sample then return Sim.Sample() end
-    return SAMPLE_COPY
+    return SAMPLE_COPY[SC.CLIENT]
 end
 
---- The made-up party (narrative only, design D1): every sample character whose class has a kick.
+--- How a member is named in a `[sim]` line: the first name on Retail, the whole character name on
+--- WoW Forever, "First Surname" (forever-quirks-§4). The key stays the first name, lowercased.
+local function displayName(row)
+    if SC.CLIENT == "forever" and type(row.surname) == "string" then return row.name .. " " .. row.surname end
+    return row.name
+end
+
+--- The made-up party (narrative only, design D1): every sample character whose class has a kick on
+--- the running client.
 local function buildParty()
     local party = {}
+    local kicks = KICKS_BY_CLIENT[SC.CLIENT]
     for _, row in ipairs(sampleRows()) do
-        local kick = KICKS[row.classFile]
+        local kick = kicks[row.classFile]
         if kick then
-            party[row.name:lower()] = { name = row.name, spec = row.spec, specID = row.specID,
+            party[row.name:lower()] = { name = displayName(row), spec = row.spec, specID = row.specID,
                 class = row.classFile, spell = kick }
         end
     end
@@ -83,13 +124,31 @@ local function buildParty()
 end
 SC.PARTY = buildParty()
 
+-- Which member kicks at each party step of the story, per client: Retail's four kickers, and on WoW
+-- Forever the two the party has, taking turns (every timeline names a member of SC.PARTY).
+local KICKERS_BY_CLIENT = {
+    retail  = { first = "sampleblade", second = "samplehunter", third = "mockflame", tank = "mockshield" },
+    forever = { first = "mockflame",   second = "mockshield",   third = "mockflame", tank = "mockshield" },
+}
+local KICKER = KICKERS_BY_CLIENT[SC.CLIENT]
+
 --- The enemies, with the spellIDs of the casts each makes (real spells, read for their names and
 --- textures through NS.Compat.GetSpellInfo when the cast starts).
-SC.ENEMIES = {
-    casterA = { name = L["Shadowcaster"], cast = 686, channel = 15407 },     -- Shadow Bolt, Mind Flay
-    casterB = { name = L["Bonecaller"],   cast = 5782, channel = 234153 },   -- Fear, Drain Life
-    boss    = { name = L["Hollow King"],  cast = 116858, channel = 234153 }, -- Chaos Bolt, Drain Life
+--- Per client: Chaos Bolt 116858 and Retail's Drain Life 234153 have no row in WoW Forever's data
+--- (DB2 1.60.1.71037 SpellName), so there the boss casts Fireball 133 and Drain Life is rank 1, 689.
+local ENEMIES_BY_CLIENT = {
+    retail = {
+        casterA = { name = L["Shadowcaster"], cast = 686, channel = 15407 },     -- Shadow Bolt, Mind Flay
+        casterB = { name = L["Bonecaller"],   cast = 5782, channel = 234153 },   -- Fear, Drain Life
+        boss    = { name = L["Hollow King"],  cast = 116858, channel = 234153 }, -- Chaos Bolt, Drain Life
+    },
+    forever = {
+        casterA = { name = L["Shadowcaster"], cast = 686, channel = 15407 },     -- Shadow Bolt, Mind Flay
+        casterB = { name = L["Bonecaller"],   cast = 5782, channel = 689 },      -- Fear, Drain Life
+        boss    = { name = L["Hollow King"],  cast = 133, channel = 689 },       -- Fireball, Drain Life
+    },
 }
+SC.ENEMIES = ENEMIES_BY_CLIENT[SC.CLIENT]
 
 -- The story's timing (seconds) at one step a second: every cast, the `leave` cast, every channel.
 -- The drivers scale each by the step delay when its step plays (SimDrivers D.Pace, R3-FIX), so a
@@ -145,7 +204,7 @@ end
 
 local TIMELINES = {}
 
---- A Mythic+ pull with several kickers.
+--- A Mythic+ pull (a dungeon pull on WoW Forever) with several kickers.
 function TIMELINES.pull()
     local a, b = "casterA", "casterB"
     return {
@@ -155,38 +214,45 @@ function TIMELINES.pull()
         cast(a, L["%s starts a cast"]:format(enemyName(a))),
         cast(b, L["%s starts a cast beside it"]:format(enemyName(b))),
         kick(a),
-        partyKick("sampleblade", b),
+        partyKick(KICKER.first, b),
         cast(b, L["%s starts a channel"]:format(enemyName(b)), { channel = true }),
-        partyKick("samplehunter", b),
+        partyKick(KICKER.second, b),
         cast(a, L["%s casts again while your kick cools"]:format(enemyName(a))),
-        partyKick("mockflame", a),
+        partyKick(KICKER.third, a),
         step("Cc", { enemy = a, label = L["Stop %s with your CC"]:format(enemyName(a)) }),
         step("Die", { enemy = a, label = L["%s dies"]:format(enemyName(a)) }),
         combat(false),
     }
 end
 
---- A boss kick rotation, with your kick on two charges.
+--- A boss kick rotation, with your kick on two charges. WoW Forever has no kick with charges (the
+--- research's CA 2), so there the story has no Setup step: the second kick meets the first one's
+--- cooldown, and the expiry is that cooldown coming back.
 function TIMELINES.boss()
     local k = "boss"
     local n = enemyName(k)
-    return {
-        step("Setup", { charges = 2, label = L["Your kick gets two charges"] }),
+    local charged = SC.CLIENT == "retail"
+    local steps = {}
+    if charged then steps[1] = step("Setup", { charges = 2, label = L["Your kick gets two charges"] }) end
+    local story = {
         combat(true),
         target(k),
         cast(k, L["%s: cast 1"]:format(n)),
-        partyKick("sampleblade", k),
+        partyKick(KICKER.first, k),
         cast(k, L["%s: cast 2"]:format(n)),
         kick(k),
         cast(k, L["%s: cast 3, a channel"]:format(n), { channel = true }),
-        partyKick("mockshield", k),
+        partyKick(KICKER.tank, k),
         cast(k, L["%s: cast 4"]:format(n)),
         kick(k),
-        step("Expire", { spell = "kick", label = L["Your kick's charges come back"] }),
+        step("Expire", { spell = "kick",
+            label = charged and L["Your kick's charges come back"] or L["Your kick comes back"] }),
         cast(k, L["%s: cast 5"]:format(n)),
         kick(k),
         combat(false),
     }
+    for _, s in ipairs(story) do steps[#steps + 1] = s end
+    return steps
 end
 
 --- Your kick on cooldown, and an uninterruptible cast.
@@ -215,9 +281,9 @@ function TIMELINES.leave()
         combat(true),
         target(a),
         focus(b),
-        cast(b, L["%s starts a cast %s is assigned to"]:format(enemyName(b), memberName("mockshield")),
+        cast(b, L["%s starts a cast %s is assigned to"]:format(enemyName(b), memberName(KICKER.tank)),
             { duration = SC.LEAVE_CAST }),
-        step("Leave", { member = "mockshield", label = L["%s leaves the party"]:format(memberName("mockshield")) }),
+        step("Leave", { member = KICKER.tank, label = L["%s leaves the party"]:format(memberName(KICKER.tank)) }),
         focus(nil, L["Clear your focus"]),
         target(b, L["Target %s mid-cast"]:format(enemyName(b))),
         kick(b),
@@ -228,8 +294,9 @@ end
 -- ── fill the host's table in place (modules/Sim.lua created it) ──────────────────────────────
 
 SC.NAMES = { "pull", "boss", "miss", "leave" }
+-- WoW Forever has no Mythic+, so its pull is a dungeon's (the key stays `pull`).
 SC.LABELS = {
-    pull  = L["Mythic+ pull, several kickers"],
+    pull  = SC.CLIENT == "forever" and L["Dungeon pull, several kickers"] or L["Mythic+ pull, several kickers"],
     boss  = L["Boss kick rotation"],
     miss  = L["Kick on cooldown, uninterruptible cast"],
     leave = L["Party member leaves mid-pull"],

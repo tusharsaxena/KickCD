@@ -13,7 +13,12 @@ Neither repeats the other (documentation-§7).
 
 ## Runtime (in-game)
 
-**World of Warcraft (Retail). Nothing else.**
+**World of Warcraft: Retail or WoW Forever. Nothing else.** One unsuffixed `KickCD.toc` carries
+both numbers, `## Interface: 120105, 16001` (Retail 12.1.5 Midnight, WoW Forever 1.60.1), and no
+load-gating line (toc-file-§3, the roster's `Retail · Forever`). What one client lacks or has in a
+shape of its own (the Cooldown Manager gate, the empowered-cast routes, the default lists, the rank
+resolver, Feral Charge's form override) is gated per feature, in `docs/ARCHITECTURE.md`'s
+per-client feature table (clients-§4).
 
 - `KickCD.toc` declares **no** `## Dependencies` line, so no addon is required.
 - `KickCD.toc` declares `## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0,
@@ -30,7 +35,8 @@ Neither repeats the other (documentation-§7).
   loads first when the player has it, because the vendored `LibKa0s-Skin-1.0` offers it the owner
   at file load (`core/SkinSetup.lua`) and its skin provider reads it only when the Skin tab's
   source is set to it. Without it, every other skin still works.
-- Client version: `KickCD.toc`'s first line is `## Interface: 120105` — WoW 12.1.5 (Midnight).
+- Client version: `KickCD.toc`'s first line is `## Interface: 120105, 16001` — WoW 12.1.5 (Midnight)
+  and WoW Forever 1.60.1, pinned by `tests/test_client_shape.lua`.
 - The addon **MUST NOT** fetch a library at build time; vendoring is the rule (library-stack,
   packaging). Listing a library above does not license fetching it.
 
@@ -167,12 +173,14 @@ The exact commands this repo is verified with. All run from the repo root.
 ```bash
 ~/.claude/dev-copilot/bin/ka0s-bounded luacheck .   # must be 0 warnings, 0 errors
 lua tests/run.lua                                   # must exit 0, all cases passing
+KA0S_KIT_CLIENT=forever lua tests/run.lua           # the same suite as WoW Forever: green too
 bash tests/_kit/run-automated-tests.sh --suite complexity   # the sighted complexity suite (kit 35); recorded in each run bundle
                                                     # from kit 41 a crashed or bounded lizard run is a complexity fail with
                                                     # zeroed figures and a crashed bucket (crashedFiles), never a pass
 ```
 
-The first two are the **green commit gate**. The third is a **release** checkpoint and is
+The first three are the **green commit gate**: KickCD ships on Retail and WoW Forever, so its
+suite runs under both kit profiles (clients-§6). The fourth is a **release** checkpoint and is
 deliberately **not** a commit gate (performance-§10). What each one means, what to do when one goes
 red, and the vendored-copy diffs that run alongside them are all in
 [`docs/testing.md`](docs/testing.md).

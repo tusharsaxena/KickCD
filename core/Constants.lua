@@ -224,6 +224,17 @@ Const.SPEC = {
     ARMS = 71, FURY = 72, PROTECTION_WARRIOR = 73,
 }
 
+-- WoW Forever's specialization ids (the Forever port, MKF-KC-07): ONE per class, keyed by the
+-- class file token. Forever has nine classes and its ChrSpecialization (1.60.1.71037) carries one
+-- class-named row each (1493 is the pet spec, deliberately absent); the three talent trees are
+-- talent groups with no spec id. These key defaults/Spells_Forever.lua ([SPEC.WARRIOR]) and the
+-- `forever` flavor of tools/seeds/seeds.py, which reads this table by name. No token carries an
+-- underscore: SPEC_TOKEN's suffix strip below must never touch one. None collides with a Retail id.
+Const.SPEC_FOREVER = {
+    WARRIOR = 1491, PALADIN = 1486, HUNTER = 1485, ROGUE = 1488, PRIEST = 1487,
+    SHAMAN = 1489, MAGE = 1482, WARLOCK = 1490, DRUID = 1484,
+}
+
 -- specID -> English display token, for log lines, `/kcd spells list` output
 -- and the v2 -> v3 spell-key migration. Deliberately the ENGLISH token even
 -- on a localized client: it is what bug reports quote and what the slash

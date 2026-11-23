@@ -212,7 +212,7 @@ end)
 
 test("skin flip: Ka0s Default keeps this addon's pixels, with no shadow", function()
     -- red under: an owner token dropped (the glow reads glow.color's gold) or a companion on the wrong token
-    local inst = boot()
+    local inst = boot(nil, T.ka0sDefault())
     local NS = inst.NS
     local Castbar, cb, s = castbar(inst)
     Castbar:Reskin(cb)
@@ -319,7 +319,7 @@ test("skin flip: each slot's glow reaches the driver in the skin's color through
     -- red under: glowConfig not answering a slot's companion, or UpdateGlow not handing it to StartGlow:
     -- the glow then draws the stored yellow on every skin, and the idempotency gate, comparing that same
     -- yellow, leaves the old glow running through a switch
-    local inst = boot()
+    local inst = boot(nil, T.ka0sDefault())
     local NS = inst.NS
     local T2 = lib(inst):ResolveSkin("obsidian")
     local yellow = rgba(1, 1, 0, 1)
@@ -456,7 +456,7 @@ test("skin flip: the charges badge draws the skin's HUD shadow, as the countdown
     -- SD-SK-KC.1 (Ka0sAddonsCommonTasks docs/2026-11-20-SKIN_DEFAULTS_AUDIT, cause D6). Red under a
     -- badge painted with a raw SetFont, which keeps the NumberFontNormal template's shadow under
     -- every skin: Ka0s Default states no HUD shadow, Obsidian a black one and High Contrast 2, -2.
-    local inst = boot()
+    local inst = boot(nil, T.ka0sDefault())
     local i, cfg = icon(inst)
     local badge = i.chargesText
     local function shadow()

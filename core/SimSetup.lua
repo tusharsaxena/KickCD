@@ -4,18 +4,20 @@ local addonName, NS = ...
 -- Modeled line for line on BankLedger's core/SimSetup.lua.
 --
 -- THE SEAM. At load, straight after core/Compat.lua and before any other file can read a member
--- (the LOAD-BEARING TOC slot, host contract H2), Sim:NewSeam wraps every NS.Compat function member
--- in place, once, except the four PURE ones below. While a simulation session runs, a wrapped member
+-- and core/CompatClient.lua (the LOAD-BEARING TOC slot, host contract H2), Sim:NewSeam wraps every
+-- NS.Compat function member in place, once, except the PURE ones below. While a simulation session runs, a wrapped member
 -- asks the simulator's provider first; idle, it calls straight through to the live member, so the
--- whole cost of the seam is one field test per call. This file names no client API: core/Compat.lua
--- stays the only caller (compat). A member added to NS.Compat after this file loads, or one
+-- whole cost of the seam is one field test per call. This file names no client API: the compat
+-- family (core/Compat.lua, core/CompatClient.lua) stays the only caller (compat). A member added to NS.Compat after this file loads, or one
 -- replaced by assignment, escapes the wrap; the seam's Unwrapped() lists it, and
 -- tests/test_sim_seam.lua asserts that list is empty after the whole addon loads.
 --
--- PURE. IsSecret is the secret-value guard and _firstReturn a multi-return helper: both answer for
--- nobody. NewDuration is a constructor over C_DurationUtil, and the simulator builds its own
+-- PURE. IsSecret is the secret-value guard, InterruptFlag a cast flag's nil-to-false reading and
+-- _firstReturn a multi-return helper: all three answer for nobody. NewDuration is a constructor over C_DurationUtil, and the simulator builds its own
 -- durations through it. DebugInterrupt dumps the REAL client for `/kcd debug interrupt` on purpose
--- (core/Compat.lua says why). None of the four is ever wrapped.
+-- (core/Compat.lua says why). So are core/CompatClient.lua's six: which client this is (IsForever,
+-- IsRetail, ClientKey, ForClient) and how it spells a name (RegionalNames, UnitCharacterName) are
+-- facts of the install, not of the simulated world. None of the eleven is ever wrapped.
 --
 -- GUARDED: none. KickCD sends nothing, casts nothing and acts on nothing in the world (design D6):
 -- every Compat member is a read, so there is no outward action for a session to intercept.
@@ -37,7 +39,11 @@ local Sim = LibStub and LibStub("LibKa0s-Sim-1.0", true)
 NS.SimHost = NS.SimHost or {}
 
 -- The members that answer for nobody. Never wrapped.
-local PURE = { IsSecret = true, _firstReturn = true, NewDuration = true, DebugInterrupt = true }
+local PURE = {
+    IsSecret = true, _firstReturn = true, NewDuration = true, DebugInterrupt = true, InterruptFlag = true,
+    IsForever = true, IsRetail = true, ClientKey = true, ForClient = true,
+    RegionalNames = true, UnitCharacterName = true,
+}
 
 -- The seam's debug sink until a session binds: the `Sim` tag, only while the console is on.
 local function debug(_, fmt, ...)

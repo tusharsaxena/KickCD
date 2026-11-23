@@ -15,7 +15,9 @@
 --
 -- The client is tests/sim_support.lua's Enhancement Shaman: Wind Shear (57994) is "your kick",
 -- Capacitor Totem (192058) "your CC", and Hex (51514) is a further on-GCD spell. Every case builds
--- its own environment (tests/sim_support.lua says why).
+-- its own environment (tests/sim_support.lua says why). The story here is Retail's, so every case
+-- pins the Retail client and runs the same on both kit profiles; WoW Forever's story (its party,
+-- enemies, boss and off-GCD rule) is tests/test_sim_clients.lua's (MKF-KC-15).
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue, assertFalse, assertNil =
@@ -52,7 +54,7 @@ end
 --- still runs) and NS.Util.print captured. ctx = { env, NS, L, events, lines, delivered(event[, unit]),
 --- said(line), bar(unit), grid(unit), state(id), spy(target, method) -> calls }.
 local function fresh(profile)
-    local env = S.load()
+    local env = S.load({ client = "retail" })
     env.advance(100)
     local NS = env.NS
     NS.db.profile.locked = true
@@ -214,7 +216,7 @@ end)
 test("SimScenario: without LibKa0s the party is a copy of the library's rows", function()
     -- red under: a fallback that drifts from Sim.SAMPLE, or none (the party empty on that load)
     local live = fresh().NS.SimScenario.PARTY
-    local inst = T.load(true, true, nil, { libFiles = {} })
+    local inst = T.load(true, true, T.retailClient, { libFiles = {} })
     local P = inst.NS.SimScenario.PARTY
     for _, key in ipairs(PARTY_KEYS) do
         assertTrue(P[key] ~= nil, key .. " missing on the library-absent load")

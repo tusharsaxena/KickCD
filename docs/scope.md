@@ -47,7 +47,7 @@ The sheet decides what belongs; the game's own data decides whether an id still 
 
 ## Spell-list lifecycle and recovery
 
-`Database:BuildSpells` only re-seeds `db.profile.spells` when the WHOLE table is empty (i.e. on first profile creation or after `Database:ResetAllSpells`). Once any class entry exists, subsequent logins leave every spec list alone — including specs the user hasn't customized yet, since clearing every row in an active spec is a deliberate user choice that must survive a reload. This is intentional, not a missing re-seed pass.
+`Database:BuildSpells` (on Retail; WoW Forever seeds each absent class + spec pair instead, [schema.md](schema.md)) only re-seeds `db.profile.spells` when the WHOLE table is empty (i.e. on first profile creation or after `Database:ResetAllSpells`). Once any class entry exists, subsequent logins leave every spec list alone — including specs the user hasn't customized yet, since clearing every row in an active spec is a deliberate user choice that must survive a reload. This is intentional, not a missing re-seed pass.
 
 If the user later changes their mind and wants defaults back, two slash commands cover the recovery surface:
 

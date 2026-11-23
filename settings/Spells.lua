@@ -114,6 +114,13 @@ local freshOpen = true
 -- Helpers
 -- ---------------------------------------------------------------------------
 
+-- The running client's default lists (core/Database.lua, MKF-KC-11/13): defaults/Spells.lua's on
+-- Retail, defaults/Spells_Forever.lua's on WoW Forever. The picker, the default selection and the
+-- spec order all read the one table the seed reads.
+local function defaults()
+    return NS.Database and NS.Database.DefaultSpells and NS.Database.DefaultSpells() or nil
+end
+
 local function sortedKeys(t)
     local keys = {}
     if type(t) == "table" then
@@ -131,7 +138,8 @@ end
 -- actually ships so the editor never offers a spec it can't render.
 -- Falls back to sorted numeric keys when the client can't be queried.
 local function specOrder(classFile)
-    local specs = NS.DefaultSpells and NS.DefaultSpells[classFile]
+    local source = defaults()
+    local specs = source and source[classFile]
     if type(specs) ~= "table" then return {} end
     local blizzOrder = NS.Util and NS.Util.SpecOrderForClass
         and NS.Util.SpecOrderForClass(classFile)
@@ -167,12 +175,12 @@ local function getPlayerClassSpec()
         local _, cf = _G.UnitClass("player")
         classFile = cf
     end
-    if not (classFile and NS.DefaultSpells
-            and NS.DefaultSpells[classFile]) then
+    local source = defaults()
+    if not (classFile and source and source[classFile]) then
         return nil, nil
     end
     local specID = NS.Util and NS.Util.PlayerSpecID and NS.Util.PlayerSpecID()
-    if specID and not NS.DefaultSpells[classFile][specID] then
+    if specID and not source[classFile][specID] then
         specID = nil
     end
     return classFile, specID
@@ -247,10 +255,12 @@ local function writer(verb, ...)
     return NS.Database[verb](NS.Database, selectedClass, selectedSpec, ...)
 end
 
+-- The name and the icon are the RESOLVED id's (core/SpellRanks.lua, MKF-KC-09): the rank the grid
+-- draws on WoW Forever, the id itself on Retail.
 local function getSpellName(id)
     if not id then return nil end
     if Compat.GetSpellInfo then
-        local name = Compat.GetSpellInfo(id)
+        local name = Compat.GetSpellInfo(NS.SpellRanks.Resolve(id))
         if name then return name end
     end
     return nil
@@ -258,7 +268,7 @@ end
 
 local function getSpellIcon(id)
     if not id then return nil end
-    if Compat.GetSpellTexture then return Compat.GetSpellTexture(id) end
+    if Compat.GetSpellTexture then return Compat.GetSpellTexture(NS.SpellRanks.Resolve(id)) end
     return nil
 end
 
@@ -339,9 +349,14 @@ local function editorIsActiveSpec()
     if NS.State and NS.State.debug then
         local playerClass  = playerClassFile()
         local playerSpecID = NS.Util.PlayerSpecID()
-        NS.Debug("Spells", "Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.",
-            tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
-            tostring(playerClass), NS.Util.SpecDisplay(playerSpecID))
+        -- The gate's own name: the Cooldown Manager's is Retail-only (MKF-KC-12).
+        local sc, ss = tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec)
+        local pc, ps = tostring(playerClass), NS.Util.SpecDisplay(playerSpecID)
+        if SpellInput.CooldownManagerGated() then
+            NS.Debug("Spells", "Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.", sc, ss, pc, ps)
+        else
+            NS.Debug("Spells", "Editing %s/%s ≠ player %s/%s; skipping known-spell gate.", sc, ss, pc, ps)
+        end
     end
     return false
 end
@@ -426,8 +441,12 @@ local function addFromBox(id)
     addOrEnableSpell(id)
 end
 
+-- WoW Forever's lists are a class's (MKF-KC-13): its words, read once at load, a fact of the install.
+local ONE_SPEC = NS.Util.OneSpecPerClass()
+
 StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
-    text         = L["Reset all spells for this spec to addon defaults?"],
+    text         = ONE_SPEC and L["Reset all spells for this class to addon defaults?"]
+                   or L["Reset all spells for this spec to addon defaults?"],
     button1      = L["Yes"],
     button2      = L["No"],
     timeout      = 0,
@@ -550,9 +569,10 @@ end
 -- Prefers the player's own class when the defaults ship it, falling back to the
 -- first sorted class otherwise.
 local function ensureSelection(classes)
-    if not selectedClass or not (NS.DefaultSpells and NS.DefaultSpells[selectedClass]) then
+    local source = defaults()
+    if not selectedClass or not (source and source[selectedClass]) then
         local _, classFile = _G.UnitClass("player")
-        if classFile and NS.DefaultSpells and NS.DefaultSpells[classFile] then
+        if classFile and source and source[classFile] then
             selectedClass = classFile
         else
             selectedClass = classes[1]
@@ -682,7 +702,7 @@ local function renderRows()
     -- widget tree per refresh.
     releaseAceGUITree()
 
-    ensureSelection(sortedKeys(NS.DefaultSpells))
+    ensureSelection(sortedKeys(defaults()))
 
     local H = NS.Settings and NS.Settings.Helpers
 
@@ -706,7 +726,9 @@ local function renderRows()
     -- there is only ever one value to select, so onSelect has nothing to do.
     H.TabStrip(ctx, {
         tabs  = { { key = "list", label = L["Spell list"],
-                    tooltip = L["The tracked spells for the selected specialization, in priority order."] } },
+                    tooltip = NS.Util.OneSpecPerClass()
+                        and L["The tracked spells for the selected class, in priority order."]
+                        or L["The tracked spells for the selected specialization, in priority order."] } },
         value = "list",
         onSelect = function() end,
     })
@@ -716,6 +738,8 @@ local function renderRows()
         showAceGUIMissing()
         return
     end
+    -- The rows read the known ranks afresh: the page re-renders on the spellbook events.
+    NS.SpellRanks.Invalidate()
     fillRows(AceGUI, container, getActiveList())
     if container.DoLayout then container:DoLayout() end
 end

@@ -338,7 +338,7 @@ end
 test("skin font kept: a picked face other than the skin's turns Use the skin's font off, once", function()
     -- red under: no step, a step that also turned off the default or the skin's own face, or one
     -- that rewrote a stored pick
-    local NS = boot(v7Saved()).NS
+    local NS = boot(v7Saved(), T.ka0sDefault()).NS
     local u = NS.db.profile.units
     assertEqual(u.target.label.style.fontFromSkin, false, "Ka0s Kait comes back")
     assertEqual(u.target.label.style.font, "Ka0s Kait", "the pick is kept")

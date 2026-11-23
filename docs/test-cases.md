@@ -121,7 +121,7 @@ Total.
 - a secret strip read attaches the tooltip above the strip's nearest readable ancestor, never the cursor
 - a strip whose rect and every ancestor's read nil shows no tooltip, and raises nothing
 
-### test_constants.lua (26)
+### test_constants.lua (28)
 
 - Constants: the chat prefix is the cyan [KCD] tag and closes its color code
 - Constants: the notice gray is an opener with no closer (callers add |r)
@@ -140,6 +140,8 @@ Total.
 - Constants: no two spec tokens share a spec ID
 - Constants: the three Midnight-era spec IDs are present and correct
 - Constants: SPEC covers all thirteen player classes at three specs each
+- Constants: SPEC_FOREVER keys each Forever class's one spec id by its class token
+- Constants: no SPEC_FOREVER id collides with a Retail spec id
 - Constants: every spec ID has a reverse token
 - Constants: the reverse map is exactly as large as the forward map
 - Constants: the reverse map strips the disambiguating class suffix
@@ -149,6 +151,92 @@ Total.
 - Constants: every spec key in defaults/Spells.lua is a known spec ID
 - Constants: every spec ID in Const.SPEC has a shipped default list
 - Constants: defaults ship one class table per class, all UPPER-case tokens
+
+### test_spells_forever.lua (9)
+
+- Forever lists: one list per Forever class, at its SPEC_FOREVER id and nowhere else
+- Forever lists: each list is the ruled membership in the ruled order
+- Forever lists: Pummel leads the Warrior list, and every list leads with an interrupt where its class has one
+- Forever lists: every entry is the stored shape, in the closed category set, enabled
+- Forever lists: War Stomp is in the four classes a Tauren plays, as a racial, and the racial table names it
+- Forever lists: every shipped entry is an accepted ruling, and every accepted ruling is shipped
+- Retail lists: defaults/Spells.lua is byte-identical to the port's base (333cd49)
+- Retail lists: the Forever file touches neither Retail table, and every Forever list is a SPEC_FOREVER key
+- Forever lists: the TOC loads defaults/Spells_Forever.lua straight after defaults/Spells.lua
+
+### test_spell_ranks.lua (28)
+
+- Ranks: the Forever rank table is the frozen seed run's rank families, id for id
+- Ranks: every family's first rank is its key, and no rank sits in two families
+- Ranks (Forever): a row resolves to the highest rank the player knows
+- Ranks (Forever): a pet's ranks resolve on the pet's bank
+- Ranks (Forever): usable when ANY known rank is (critic C3)
+- Ranks (Forever): the known set is cached until Invalidate
+- Ranks (Forever): Cooldowns polls the live rank under the stored row's id
+- Ranks (Forever): the ready flag uses any known rank's usability
+- Ranks (Forever): a poll reads the cache, never the spellbook's rank walk
+- Ranks (Forever): the grid draws the live rank's icon, deduped on the live id
+- Ranks (Forever): the ticker reads the live rank's cooldown
+- Ranks (Forever): the icon tooltip shows the live rank
+- Ranks (Forever): the simulator's kick is the live rank
+- Ranks (Forever): the diagnostics list calls a known higher rank learned, and names it
+- Ranks (Forever): the Spells page's name, icon and known mark follow the live rank
+- Ranks (Forever): adding any rank stores the family's rank-1 id
+- Ranks (Forever): disable, category and remove find the row by any rank's id (KC-REV-3)
+- Ranks (Forever): a row stored under a rank's own id is still found by that id
+- Ranks (Retail): every answer is the id itself and the Forever table is never read
+- Ranks (Retail): IsUsable is Compat.IsSpellUsable's first value
+- Ranks (Retail): two rank ids stay two rows, two icons and two stored entries
+- Ranks (Retail): every consumer asks the client the stored id
+- Feral Charge (Forever): the bear form's override carries the cooldown and the icon
+- Feral Charge (Forever): in cat form the slot stays and is never ready (no interrupt)
+- Feral Charge (Forever): with no form aura the base id is asked
+- Feral Charge (Forever): a form change re-reads the override on UPDATE_SHAPESHIFT_FORM
+- Feral Charge (Retail): UPDATE_SHAPESHIFT_FORM is not registered and no override is read
+- Feral Charge (Forever): UPDATE_SHAPESHIFT_FORM routes to both rebuilds
+
+### test_seed_clients.lua (10)
+
+- Seed (Forever): a fresh profile holds the nine Forever lists and no Retail pair
+- Seed (Forever): a profile an out-of-date run left gains the absent lists and keeps its Retail pairs
+- Seed (Forever): a list the player emptied keeps its key and is never re-seeded
+- Seed (Forever): a Tauren Warrior's War Stomp appears once
+- Seed (Forever): the racial comes from Forever's table
+- Seed (Forever): the customized count reads Forever's pairs only
+- Seed (Forever): a one-list reset restores Forever's list
+- Seed (Forever): resetall gives back Forever's nine lists and nothing else
+- Seed (Retail): the Retail lists are seeded and the Forever tables are never read
+- Seed (Retail): a populated profile is never re-seeded, as before
+
+### test_admission_clients.lua (11)
+
+- Admission (Forever): a spell the player knows is admitted on the live pair
+- Admission (Forever): any rank of a known family is admitted
+- Admission (Forever): a spell the pet knows is admitted
+- Admission (Forever): an unlearned spell on the class's Forever list is admitted
+- Admission (Forever): an unlearned spell outside the list is refused, naming no Cooldown Manager
+- Admission (Forever): another class's list takes any spell
+- Admission (Forever): /kcd spells add refuses an unlearned spell off the list and adds nothing
+- Admission (Forever): the Cooldown Manager gate, its tag, invalidator and section are absent
+- Admission (Forever): the section list is Retail's in order with cmcache alone dropped (KC-REV-5)
+- Admission (Retail): the Cooldown Manager gate still refuses an untracked spell on the live pair
+- Admission (Retail): the tag, the invalidator and the cmcache section are still there
+
+### test_spells_page_clients.lua (13)
+
+- Spells page (Forever): the spec maps reach Druid, the class a 1..GetNumClasses loop loses
+- Spells page (Forever): a spec's token is its class's, and a Retail token is refused
+- Spells page (Forever): an early nil spec answer falls back to the class's one spec
+- Spells page (Forever): a class the Forever lists do not carry is unknown
+- Spells page (Forever): reset refuses a Retail spec token and writes no orphan list
+- Spells page (Forever): reset refuses a Retail-only class
+- Spells page (Forever): a CLASS alone names that class's one list, for every verb
+- Spells page (Forever): the command words say [CLASS], never [CLASS SPEC]
+- Spells page (Forever): the picker reads Class, one row per Forever class with one name
+- Spells page (Forever): the page opens on the player's own class list
+- Spells page (Retail): the picker, the tokens, the classes and the words are as before
+- Spells page (Retail): reset still takes what it is given, as before
+- Spells page (Forever): the Defaults popup and the list tab speak of a class
 
 ### test_state.lua (25)
 
@@ -187,7 +275,7 @@ Total.
 - the [Init] line is unchanged when nothing was rejected
 - a frame RegisterEvent honors __badEvents
 
-### test_event_routes.lua (12)
+### test_event_routes.lua (13)
 
 - DeliverEvent: SPELL_UPDATE_COOLDOWN runs Cooldowns' OnCooldownEvent once and answers 1
 - DeliverEvent: PLAYER_TARGET_CHANGED runs every module that registered it, and counts them
@@ -201,6 +289,7 @@ Total.
 - EventRoutes: a registration made through NS.SafeRegisterEvent directly is not a route
 - EventRoutes: a target is recorded once, and a filter once per (module, unit)
 - DeliverEvent: an unreadable AceEvent registry answers 0 and says so once
+- each module's RegisterLifecycleEvents sits directly under its own doc block (KC-REV-6)
 
 ### test_locale.lua (15)
 
@@ -395,7 +484,34 @@ Total.
 - with LibKa0s absent, every routed reader answers the major's absent value
 - with LibKa0s absent, the IsSecret guard answers what the library answers
 
-### test_compat_api.lua (54)
+### test_compat_client.lua (10)
+
+- compat client: the six members are functions on NS.Compat on both arms
+- compat client: ClientKey, IsForever and IsRetail answer the kit profile on both arms
+- compat client: ForClient(nil) is true, a declared client only on that client, an unknown token raises
+- compat client: a client that is neither answers nil and serves undeclared features only
+- compat client: RegionalNames follows RegionalUniqueNamesEnabled, false where it is absent
+- compat client: UnitCharacterName is the whole name with regional names, name and realm without
+- compat client: UnitCharacterName never joins a secret part
+- compat client: no shipped file but core/CompatClient.lua reads a project id or the regional-names switch
+- compat client: the boundary check is falsifiable, a planted read is found
+- compat client: core/CompatClient.lua loads straight after core/Compat.lua and before core/SimSetup.lua
+
+### test_forever_world.lua (11)
+
+- Forever world: the instance is a WoW Forever client on both kit profiles
+- Forever world: nine classes at their real ids, and a 1..GetNumClasses loop loses Druid
+- Forever world: one spec per class at its real id, named for the class
+- Forever world: the player is a Hunter at 1485 until a case makes it another class
+- Forever world: the spec count is the namespaced member only; the bare spec globals are absent
+- Forever world: C_SpellBook knows each rank only once it is taught, per bank
+- Forever world: the deprecated spellbook shims are absent
+- Forever world: there is no global cooldown spell 61304
+- Forever world: a character is First Surname
+- Forever world: a typed secret answers its underlying type and reads secret
+- typed secrets install alone on a mock set of either client
+
+### test_compat_api.lua (57)
 
 - Compat._firstReturn tolerates a nil API (pre-12.0 client)
 - Compat._firstReturn collapses a multi-return to position 1
@@ -430,10 +546,13 @@ Total.
 - GetSpellCharges passes a SECRET charge count through untouched
 - GetSpellCharges falls back to the deprecated global
 - IsSpellAvailable rejects a non-number spell ID outright
-- IsSpellAvailable is true when IsPlayerSpell says so
-- IsSpellAvailable falls back to the spellbook for racials and professions
-- IsSpellAvailable catches PET spells via the IsSpellKnown pet flag
+- IsSpellAvailable is true when C_SpellBook knows it on the player's bank
+- IsSpellAvailable falls back to the player's spellbook for racials and professions
+- IsSpellAvailable catches PET spells on the pet's bank
 - IsSpellAvailable is false for an unpicked talent choice-node sibling
+- IsSpellAvailable never asks the deprecated shims, which a client may not load
+- IsSpellAvailable answers false with C_SpellBook absent, never raising
+- IsSpellAvailable on WoW Forever: a taught rank, a pet's Spell Lock, nothing untaught
 - IsSpellUsable reads the SpellUsabilityInfo table form
 - IsSpellUsable reads the two-boolean form some Midnight builds return
 - IsSpellUsable normalizes the legacy API's 1/nil into real booleans
@@ -498,13 +617,32 @@ Total.
 - IconGrid's interruptible resolve reads positions 8 and 7 through NS.Compat
 - Castbar:Reevaluate starts the bar from the swapped NS.Compat members
 
+### test_spec_reads.lua (8)
+
+- PlayerSpecID: a spec id of 0 is no spec; on WoW Forever the class's one spec stands in
+- PlayerSpecID: a negative spec id is no spec either
+- PlayerSpecID: a real spec id still answers, on both clients
+- spec count: NS.Compat reads the namespaced member, never the deprecated global
+- spec count: absent member answers 0, never raising
+- spec info by class: NS.Compat passes the client global's returns through
+- spec names on WoW Forever come from the namespaced count: Warrior is 1491
+- spec names on Retail keep Blizzard's order and localized names
+
+### test_interrupt_flag.lua (5)
+
+- GetCastingInfo: a plain nil notInterruptible reads false, on both clients
+- GetChannelInfo: a plain nil notInterruptible reads false, on both clients
+- the cast record keeps a plain flag, and a secret one untouched
+- ApplyInterruptibleAlpha hands SetAlphaFromBoolean false for a plain nil, on both clients
+- ApplyInterruptibleAlpha passes a secret flag through untouched
+
 ### test_sim_seam.lua (9)
 
 - Sim seam: NS.SimSeam is the library's seam and NS.SimHost the host's own table
 - Sim seam: Unwrapped() is EMPTY after the whole addon loads (host contract H2)
 - Sim seam: Keys() carries every read the simulator answers, and no PURE member
 - Sim seam: idle, a wrapped member answers exactly what the client answers
-- TOC: core/SimSetup.lua loads straight after core/Compat.lua, under a LOAD-BEARING comment
+- TOC: core/SimSetup.lua loads straight after the compat family, under a LOAD-BEARING comment
 - Sim stubs: surface parity with a live instance and the live seam, both ways
 - Sim absent: NS.Sim:RunVerb prints the needs-library line once and answers absent
 - LibKa0s absent: `/kcd sim` reaches the stub through the degraded dispatcher
@@ -615,6 +753,61 @@ Total.
 - Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
 - Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out
 - Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown
+
+### test_sim_clients.lua (19)
+
+- Sim (Forever): the party is the samples with a Forever kick, Counterspell and Shield Bash
+- Sim (Forever): a party member is named whole, First Surname (forever-quirks-§4)
+- Sim (Forever): without LibKa0s the party is the same copy of the library's rows
+- Sim (Retail): the party stays the four Retail kickers, by first name
+- Sim (Forever): every enemy casts a spell WoW Forever has
+- Sim (Retail): the enemies keep Retail's casts
+- Sim (Forever): the boss story has no charge step, and its expiry is the kick's cooldown
+- Sim (Retail): the boss story keeps its two charges
+- Sim (Forever): every party step of every story names a member of the Forever party
+- Sim (Forever): the pull is a dungeon pull; Retail keeps Mythic+
+- Sim (Forever): only Counterspell and the bear Feral Charge are off the global cooldown
+- Sim (Retail): every kick stays off the global cooldown
+- Sim (Forever): the prepare leaves an on-GCD kick on the global cooldown
+- Sim (Forever): all four stories play to their end for a Mage and a Warrior
+- Sim (Forever): the pull narrates the whole names and Counterspell
+- Sim (Forever): with no usable spell the refusal speaks of the class
+- Cast routes (Retail): both filters route the empowered cast
+- Cast routes (Forever): the empowered cast is absent by declaration, the rest kept
+- Util.AddClientRoutes: adds the routes only on a client the declaration names
+
+### test_probe.lua (18)
+
+- Probe: a bare probe and `status` answer one line, stopped and empty before a start
+- Probe: start stamps the client, its build and the addon, and writes a start entry
+- Probe: the start entry records each rank's answers and the rank the resolver picks
+- Probe: the start entry says whether the global cooldown spell answers
+- Probe: stop unregisters every event and stamps the record; start again resumes it
+- Probe: clear drops the record; while running a fresh, stamped one goes on
+- Probe: an unknown word prints the usage line
+- Probe: the `/kcd debug` list names the probe
+- Probe: a target's cast records whether its flag is nil, plain or secret
+- Probe: a cast on a unit the addon does not track is not recorded
+- Probe: a form change records the form and Feral Charge's override (U16)
+- Probe: a spellbook change is recorded only when its answers changed (U17)
+- Probe: combat start records the tracked kick's cooldown secrecy (U20)
+- Probe: past the cap the oldest entry that is not a start goes, and is counted
+- Probe: a long string is cut, and a table or function is stored as its type
+- Probe: a handler that raises is recorded as an error entry, never thrown
+- Probe: nothing is recorded while a simulation runs, and the start refuses during one
+- Probe: Retail records the same start entry, stamped retail
+
+### test_client_shape.lua (9)
+
+- Client shape: the TOC carries the Retail and WoW Forever numbers and no load-gating line
+- Client shape: the Forever number arms the kit's missing-globals scan for both clients
+- Client shape: the README opens on the dual-client WoW badge and the supported-clients sentence
+- Client shape: the CLAUDE.md gate, DEPENDENCIES.md and docs/testing.md name both suite runs
+- Client shape: docs/testing.md names the hybrid default instance as a known limitation (KC-REV-2)
+- Client shape: docs/forever-quirks.md carries the vendored Forever catalog, then its own section
+- Client shape: the ARCHITECTURE per-client table names every declared feature
+- Client shape: each per-client feature's answer is the running client's
+- Client shape: docs/smoke-tests.md names each theme's client and carries the WoW Forever theme
 
 ### test_sim_marker.lua (21)
 
@@ -802,7 +995,7 @@ Total.
 - instanceCasting is false for a unit that doesn't exist
 - an empower start re-evaluates target_casting visibility
 
-### test_icongrid_render.lua (41)
+### test_icongrid_render.lua (42)
 
 - the render helpers are published for testing
 - SafeUnpackColor reads both the array and hash color shapes
@@ -840,6 +1033,7 @@ Total.
 - the drag strip is never a member: it shows only unlocked, when no icon takes the mouse
 - a shown sim strip is part of the display: the tooltip clears the strip
 - the unit label's text is part of the display while shown on the grid
+- a label attached to the cast bar is a member only while the bar is anchored (KC-REV-1)
 - a tooltip that grows after it is placed is placed again, re-clamped to the screen
 - with no room on either side the icon's tooltip is attached above the icon
 - an icon whose geometry cannot be read gets its tooltip above the icon, never at the cursor
@@ -1207,6 +1401,17 @@ Total.
 - DebugDump says (no widget) before the frame has ever been built
 - DebugDump writes every line through a caller's emit sink, and nothing to chat
 
+### test_debug_secrets.lua (8)
+
+- castbar dump: a secret notInterruptible is reported secret, never as a plain value
+- castbar dump: a plain flag still reports its value
+- castbar dump: a secret unit name is rendered secret, never joined
+- castbar dump: a secret UnitIsUnit or UnitCanAttack is reported secret, never branched on
+- castbar dump: the unit is named in full, First Surname on WoW Forever
+- interrupt dump: the header names the unit in full, First Surname on WoW Forever
+- interrupt dump: a secret canAttack is rendered secret, never branched on
+- interrupt dump: a typed secret flag at position 8 is described as secret
+
 ### test_cooldowns.lua (22)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
@@ -1460,8 +1665,8 @@ Total.
 ### test_skinsetup.lua (14)
 
 - Skin seam: the owner is the folder name, and NS.Skin is its facade
-- Skin seam: the read answers Ka0s Default before the profile store exists
-- Skin seam: the eight skin keys default to Ka0s Default, today's Scope and HUD text only
+- Skin seam: the read answers the client's default skin before the profile store exists
+- Skin seam: the eight skin keys default to the client's skin, today's Scope and HUD text only
 - Skin seam: every skin key is a skipRender row of the General page's Skin tab
 - Skin seam: the skin row's values are every registered skin, in the library's order
 - Skin seam: /kcd set refuses an unregistered skin and applies a registered one
@@ -1469,7 +1674,7 @@ Total.
 - Skin seam: /kcd set reaches an exception, and only its own half
 - Skin seam: /kcd set reaches an override, and an empty one is the skin's own
 - Skin seam: a profile switch applies the new profile's skin, Scope and overrides
-- Skin seam: a profile reset takes the skin back to Ka0s Default
+- Skin seam: a profile reset takes the skin back to the client's default
 - Skin seam: every LibKa0s-Widgets factory call names the owner
 - Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
 - the profile default and the pre-store fallback name the library's DefaultSkin, never a literal
@@ -2062,10 +2267,15 @@ Total.
 | test_mediasetup.lua | 11 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 37 |
-| test_constants.lua | 26 |
+| test_constants.lua | 28 |
+| test_spells_forever.lua | 9 |
+| test_spell_ranks.lua | 28 |
+| test_seed_clients.lua | 10 |
+| test_admission_clients.lua | 11 |
+| test_spells_page_clients.lua | 13 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
-| test_event_routes.lua | 12 |
+| test_event_routes.lua | 13 |
 | test_locale.lua | 15 |
 | test_units.lua | 26 |
 | test_schema.lua | 42 |
@@ -2074,15 +2284,22 @@ Total.
 | test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
-| test_compat_api.lua | 54 |
+| test_compat_client.lua | 10 |
+| test_forever_world.lua | 11 |
+| test_compat_api.lua | 57 |
 | test_compat_debug.lua | 13 |
 | test_compat_units.lua | 27 |
+| test_spec_reads.lua | 8 |
+| test_interrupt_flag.lua | 5 |
 | test_sim_seam.lua | 9 |
 | test_sim_world.lua | 17 |
 | test_sim_session.lua | 21 |
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 28 |
 | test_sim_e2e.lua | 13 |
+| test_sim_clients.lua | 19 |
+| test_probe.lua | 18 |
+| test_client_shape.lua | 9 |
 | test_sim_marker.lua | 21 |
 | test_sim_checkbox.lua | 12 |
 | test_debuglog.lua | 13 |
@@ -2093,7 +2310,7 @@ Total.
 | test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
-| test_icongrid_render.lua | 41 |
+| test_icongrid_render.lua | 42 |
 | test_layers.lua | 14 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
@@ -2111,6 +2328,7 @@ Total.
 | test_castbar_frame.lua | 54 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
+| test_debug_secrets.lua | 8 |
 | test_cooldowns.lua | 22 |
 | test_cooldowns_gates.lua | 23 |
 | test_cooldowns_refresh.lua | 10 |
@@ -2160,4 +2378,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1738** |
+| **Total** | **1904** |

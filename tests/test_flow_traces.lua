@@ -69,8 +69,8 @@ test("the list summary names the spells it could not draw and the duplicates it 
     -- duplicated ID are both "the icon is not there"; the line says which.
     -- red under: drop the `trace.unknown` / `trace.dup` collection in seedList
     local inst, NS = listening()
-    inst.mocks.IsPlayerSpell = function(id) return id ~= 47528 end
-    inst.mocks.IsSpellKnown = function() return false end
+    inst.mocks.C_SpellBook = { IsSpellKnown = function(id) return id ~= 47528 end,
+                               IsSpellInSpellBook = function() return false end }
     local IconGrid = NS:GetModule("IconGrid")
     NS.db.profile.spells.HUNTER[NS.Const.SPEC.BEASTMASTERY] = { entry(1766), entry(47528), entry(1766) }
     IconGrid:BuildActiveList(IconGrid:GetInstance("target"))
@@ -252,7 +252,7 @@ test("the Cooldown Manager walk logs one build line, with the calls that raised"
     assertTrue(NS.DebugLog:FindLine("refused: not in the cooldown-manager set"))
     inst.mocks.C_CooldownViewer = nil
     NS.DebugLog:SetEnabled(false)
-end)
+end, T.RETAIL_ONLY)
 
 test("a refused spell-list write names its guard, once, from the writer or the verb", function()
     -- debug-logging-§8 diagnosis: a command refused or a write rejected names the guard. The

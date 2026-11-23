@@ -14,7 +14,7 @@
 --
 -- THE CLIENT IT MODELS. An enUS Enhancement Shaman whose default spell list (defaults/Spells.lua)
 -- carries Wind Shear (57994, `interrupt`) and Capacitor Totem (192058, `stun`) — and Hex (51514),
--- which the default list carries too — every one known (`IsPlayerSpell` true). The kit's clock
+-- which the default list carries too — every one known (the base mock's `C_SpellBook` answers true). The kit's clock
 -- (`mocks.__now`) drives `GetTime`, which this addon's mock otherwise pins at 0, and
 -- `C_DurationUtil.CreateDuration` answers a Lua duration fake read off that same clock, so
 -- core/Compat.lua's NewDuration builds a duration whose remaining time really runs down.
@@ -133,18 +133,33 @@ end
 --- A fresh instance of the whole addon on the Shaman client above.
 --- @param opts table|nil  { enable = false } skips the enable cascade (default: enabled);
 ---        { mutate = fn(mocks) } reshapes the mock further before any source loads;
----        { loadOpts = { ... } } is handed to T.load as its fourth argument (libFiles, afterFile).
+---        { loadOpts = { ... } } is handed to T.load as its fourth argument (libFiles, afterFile);
+---        { client = "retail" } pins Retail's project constants whatever KA0S_KIT_CLIENT says, for
+---        a case of the Retail story (the WoW Forever port, MKF-KC-15);
+---        { forever = { class = "MAGE", learn = { 2139, ... } } } loads the WoW Forever world
+---        instead of the Shaman (tests/wow_mock_forever.lua), its player that class knowing those ids.
 --- @return table env  { NS, mocks, inst, advance(sec), flush(), snapshotDB() }
 function S.load(opts)
     opts = opts or {}
+    local loadOpts = opts.loadOpts
+    if opts.forever then
+        loadOpts = {}
+        for k, v in pairs(opts.loadOpts or {}) do loadOpts[k] = v end
+        loadOpts.world = "forever"
+    end
     local inst = T.load(true, opts.enable ~= false, function(mocks)
         mocks.GetTime = function() return mocks.__now end
         mocks.C_DurationUtil = { CreateDuration = function() return newDuration(mocks) end }
-        mocks.UnitClass = function() return "Shaman", "SHAMAN", S.SHAMAN_CLASS_ID end
-        mocks.__setPlayerSpec(S.SHAMAN_CLASS_ID, S.ENHANCEMENT_INDEX)
-        mocks.IsPlayerSpell = function() return true end
+        if opts.forever then
+            mocks.__setForeverClass(opts.forever.class)
+            mocks.__learn(opts.forever.learn or {})
+        else
+            if opts.client == "retail" then T.retailClient(mocks) end
+            mocks.UnitClass = function() return "Shaman", "SHAMAN", S.SHAMAN_CLASS_ID end
+            mocks.__setPlayerSpec(S.SHAMAN_CLASS_ID, S.ENHANCEMENT_INDEX)
+        end
         if opts.mutate then opts.mutate(mocks) end
-    end, opts.loadOpts)
+    end, loadOpts)
     local env = { NS = inst.NS, mocks = inst.mocks, inst = inst }
     function env.advance(seconds) advance(env.mocks, seconds) end
     function env.flush() flush(env.mocks) end

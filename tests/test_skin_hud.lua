@@ -117,7 +117,7 @@ end)
 test("HUD skin: the cast bar draws the skin's face, texture and border while following", function()
     -- red under: Castbar_Skin.lua fetching the stored pick (c.font, sc.statusBarTexture,
     -- sc.borderTexture) instead of NS.SkinResolve's answer
-    local inst, fetched = boot()
+    local inst, fetched = boot(nil, T.ka0sDefault())
     local NS = inst.NS
     local Castbar = NS:GetModule("Castbar")
     local cb = Castbar:GetInstance("target")
@@ -132,7 +132,7 @@ end)
 
 test("HUD skin: a companion turned off draws the player's stored pick again", function()
     -- red under: resolving with `fromSkin` always true, or ignoring the companion
-    local inst, fetched = boot()
+    local inst, fetched = boot(nil, T.ka0sDefault())
     local NS = inst.NS
     local Castbar = NS:GetModule("Castbar")
     local c = NS.db.profile.units.target.castbar
@@ -223,7 +223,7 @@ end)
 test("HUD skin: the countdown follows hud.font and the charges badge takes the skin's face", function()
     -- red under: ApplyTextConfig fetching cfg.cooldownTextFont straight, or the badge left on
     -- NumberFontNormal's face (D4)
-    local inst, fetched = boot()
+    local inst, fetched = boot(nil, T.ka0sDefault())
     local NS = inst.NS
     local IG = NS:GetModule("IconGrid")
     local icon = IG.CreateIconWidget(inst.mocks.CreateFrame("Frame"))
@@ -289,7 +289,7 @@ end)
 test("HUD skin: the unit label follows hud.font, and a false companion is the player's face", function()
     -- red under: reading the companion through sv(), whose truthiness test turns false into
     -- the fallback
-    local inst, fetched = boot()
+    local inst, fetched = boot(nil, T.ka0sDefault())
     local NS = inst.NS
     local UL = NS:GetModule("UnitLabel")
     clear(fetched)
@@ -367,7 +367,7 @@ end
 test("HUD skin: the reset puts every companion on the skin once, keeps the picks, and walks past v6", function()
     -- red under: no migrations[5], NS.SCHEMA_VERSION left at 5, a reset that overwrote the
     -- stored pick, or one that missed a unit
-    local inst = boot(v5Saved())
+    local inst = boot(v5Saved(), T.ka0sDefault())
     local NS = inst.NS
     assertTrue(NS.SCHEMA_VERSION >= 6, "migrations[5] is on the ladder")
     assertEqual(NS.db.global.schemaVersion, NS.SCHEMA_VERSION)

@@ -186,7 +186,7 @@ tag shown.
 | `units` | `Units` | this addon | Per unit: stored enable, linked, and whether it is wanted now |
 | `spells` | `Spells` | this addon | The class and spec, the current spec's list with `off` on a disabled row and `unlearned` on a spell the player does not know, and how many stored lists exist and how many differ from their defaults |
 | `cooldowns` | `Cooldowns` | this addon | The `/kcd debug spells` dump, routed into the report |
-| `cmcache` | `CMCache` | this addon | The Cooldown Manager cache's state and its spell count, read from the memo |
+| `cmcache` | `CMCache` | this addon | The Cooldown Manager cache's state and its spell count, read from the memo. Retail only: on WoW Forever the gate is absent and so is the section (MKF-KC-12) |
 | `icongrid` | `IconGrid` | this addon | Per unit: enabled, shown, active and free icons, laid-out count, handle; the saved anchor against the live one; the last visibility decision and the three cached glow-gate scalars (`casting`, `interruptible`, and `any`, the raw cast state the `target_casting` trigger reads) |
 | `castbar` | `Castbar` | this addon | Per unit: enabled, shown, casting; the anchor mode and the saved anchor against the live one; then the `/kcd debug castbar` dump for that unit |
 | `interrupt` | `Interrupt` | this addon | The `/kcd debug interrupt` dump, once for `target` and once for `focus` |
@@ -336,6 +336,17 @@ LibKa0s-Core's `SafeRegisterEvent`. A refused name costs only its own row of a r
 
 **Use it when** the `[Init]` line reports rejected events, or when a feature goes quiet after a
 client patch that may have retired an event it listens to.
+
+### `/kcd debug probe start|stop|status|clear`
+
+The `probe` row in `core/KickCD.lua`, answered by `modules/Probe.lua` (the WoW Forever port,
+MKF-KC-16). It is not a report: it records client facts into `db.global.probe` inside `KickCDDB`
+while started, on a private frame that no simulated event reaches, and each verb answers one chat
+line (`probe: running, 12 entries (cap 500), forever 1.60.1 71037`). The kinds it records and the
+probes they answer are in [forever-probes.md](forever-probes.md).
+
+**Use it when** a WoW Forever fact the port shipped a safe default for needs its answer from the
+live client.
 
 ## Where else this is pinned
 

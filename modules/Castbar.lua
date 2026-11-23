@@ -116,7 +116,10 @@ local instances = {}   -- [unit] = instance
 -- cast: the client reports it through UnitChannelInfo (so OnChannelStart's
 -- Compat.GetChannelInfo reads it, and OnCastDelayed's GetCastingInfo falls
 -- through to the channel shim) but fires its own start/update/stop, not CHANNEL_*.
-local CASTBAR_CAST_ROUTES = {
+-- Retail's alone: the three EMPOWER_* routes join by declaration on Retail and are
+-- never registered on WoW Forever, which has no Evoker (clients-§4; the Forever
+-- port's critic L2, MKF-KC-15).
+local CASTBAR_CAST_ROUTES = NS.Util.AddClientRoutes({
     UNIT_SPELLCAST_START             = "OnCastStart",
     UNIT_SPELLCAST_STOP              = "OnCastStop",
     UNIT_SPELLCAST_FAILED            = "OnCastStop",
@@ -127,10 +130,11 @@ local CASTBAR_CAST_ROUTES = {
     UNIT_SPELLCAST_CHANNEL_UPDATE    = "OnCastDelayed",
     UNIT_SPELLCAST_INTERRUPTIBLE     = "OnInterruptibilityChanged",
     UNIT_SPELLCAST_NOT_INTERRUPTIBLE = "OnInterruptibilityChanged",
+}, {
     UNIT_SPELLCAST_EMPOWER_START     = "OnChannelStart",
     UNIT_SPELLCAST_EMPOWER_UPDATE    = "OnCastDelayed",
     UNIT_SPELLCAST_EMPOWER_STOP      = "OnCastStop",
-}
+}, { "retail" })
 
 local function newInstance(unit)
     return {

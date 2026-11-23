@@ -135,7 +135,7 @@ end)
 -- CommandRows (NS.Slash.CommandRows), split through SplitVerb and look up through
 -- FindCommand, so the bytes are pinned exactly, uppercase hex included.
 
-local DEBUG_VERBS  = { "diagnostics", "spells", "castbar", "interrupt", "window",
+local DEBUG_VERBS  = { "diagnostics", "spells", "castbar", "interrupt", "probe", "window",
                        "on", "off", "toggle", "events" }
 local SPELLS_VERBS = { "list", "add", "remove", "enable", "disable", "category",
                        "reset", "resetall" }
@@ -824,7 +824,7 @@ test("the CLI refuses a spell the Cooldown Manager does not track for the live s
     -- The gate admits what the Cooldown Manager does track.
     say(inst, function() inst.NS:OnSlashCommand("spells add Wind Shear") end)
     assertTrue(hasSpell(inst, "SHAMAN", 262, WIND_SHEAR), "a tracked spell is admitted")
-end)
+end, T.RETAIL_ONLY)
 
 test("the CLI gate is dropped for a pair other than the player's live one, as on the page", function()
     -- C_CooldownViewer answers only for the logged-in spec, so another spec's

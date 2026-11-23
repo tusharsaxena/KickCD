@@ -14,8 +14,10 @@ local assertFalse, assertNear = T.assertFalse, T.assertNear
 --- A fully enabled instance per test — Reskin writes to per-instance state
 --- (inst.structureSig), so sharing one across cases would make them
 --- order-dependent in exactly the way this feature is sensitive to.
+--- Ka0s Default by name (T.ka0sDefault): the sizes below are its own, and the WoW Forever skin
+--- scales HUD text.
 local function enabled()
-    local inst = T.load(true, true)
+    local inst = T.load(true, true, nil, T.ka0sDefault())
     return inst.NS, inst.NS:GetModule("Castbar")
 end
 

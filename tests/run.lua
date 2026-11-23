@@ -24,6 +24,8 @@ local Loader  = dofile(root .. "/tests/_kit/loader.lua")
 -- loadfile-and-call rather than dofile, so the mock builder is handed `root` and can resolve
 -- tests/_kit/mock_base.lua — the base it layers over — without assuming the process's CWD.
 local mockmod = assert(loadfile(root .. "/tests/wow_mock.lua"))(root)
+-- The WoW Forever world (MKF-KC-02): applied to an instance's mocks when its opts ask for it.
+local foreverWorld = assert(loadfile(root .. "/tests/wow_mock_forever.lua"))()
 
 -- Every addon chunk is called as chunk("KickCD", NS), reproducing the client's
 -- `local addonName, NS = ...` header. Library chunks ignore the varargs.
@@ -82,6 +84,44 @@ local function loadTocFiles(NS, mocks, afterFile)
 end
 
 -- ---------------------------------------------------------------------------
+-- The Retail-shaped world's seed under WoW Forever's constants (MKF-KC-11)
+-- ---------------------------------------------------------------------------
+--
+-- An instance loaded with no `world` is tests/wow_mock.lua's world: a Retail Hunter at Retail spec
+-- ids. Under `KA0S_KIT_CLIENT=forever` its project constants say WoW Forever, so the addon takes
+-- every Forever branch -- and seeds from defaults/Spells_Forever.lua, keyed by Forever's spec ids,
+-- which that world's player never has. So for such an instance, and only on Forever constants, the
+-- seed accessors (Database.DefaultSpells, Database.RaceCastStoppers) answer the Retail tables, the
+-- seed keyed by the world's own spec ids, and Util.OneSpecPerClass answers false (MKF-KC-13):
+-- every Forever code path (the absent-key seed, the Forever
+-- resetall, the per-client count) still runs, over data the world can use. A case that loads the
+-- WoW Forever world (`{ world = "forever" }`) gets the real Forever seed on both profiles, and
+-- tests/test_seed_clients.lua pins it there. The hook is merged into the case's own afterFile.
+local function foreverConstants(mocks)
+    return mocks.WOW_PROJECT_CAMELOT ~= nil and mocks.WOW_PROJECT_ID == mocks.WOW_PROJECT_CAMELOT
+end
+
+local function retailShapedSeed(mocks, opts)
+    local afterFile = opts and opts.afterFile
+    if (opts and opts.world) or not foreverConstants(mocks) then return afterFile end
+    local hooks = {}
+    for k, v in pairs(afterFile or {}) do hooks[k] = v end
+    local prior = hooks["core/Database.lua"]
+    hooks["core/Database.lua"] = function(NS)
+        if prior then prior(NS) end
+        NS.Database.DefaultSpells = function() return NS.DefaultSpells end
+        NS.Database.RaceCastStoppers = function() return NS.RaceCastStoppers end
+    end
+    -- Its spec ids are Retail's, so it keys lists by spec, not by class (MKF-KC-13).
+    local priorUtil = hooks["core/Util.lua"]
+    hooks["core/Util.lua"] = function(NS)
+        if priorUtil then priorUtil(NS) end
+        NS.Util.OneSpecPerClass = function() return false end
+    end
+    return hooks
+end
+
+-- ---------------------------------------------------------------------------
 -- Instance factory: a fully-loaded, isolated addon environment
 -- ---------------------------------------------------------------------------
 --- Load a fresh isolated addon instance under its own mock.
@@ -104,6 +144,10 @@ end
 ---        before the next one does -- the seam a case needs to hand later files
 ---        a non-identity locale string, since enUS's own `L` returns the key. A
 ---        key that names no TOC file raises rather than silently never firing.
+---        `{ world = "forever" }` stamps the kit's forever profile on this instance's mocks
+---        whatever KA0S_KIT_CLIENT says and applies tests/wow_mock_forever.lua's world, both
+---        BEFORE `mutate`, so a case written against WoW Forever runs the same on both kit
+---        profiles.
 --- @return table inst  { NS, mocks, initError }
 ---
 --- Isolation is per-instance and comes from the mock, not from the environment: the kit's loader
@@ -113,6 +157,13 @@ end
 --- instances.
 local function loadInstance(initDB, enable, mutate, opts)
     local mocks = mockmod.build()
+    if opts and opts.world ~= nil then
+        if opts.world ~= "forever" then error("opts.world: unknown world " .. tostring(opts.world), 2) end
+        -- makeEnv stamps the running profile once per mock set; stamping forever after it sticks.
+        Loader.makeEnv(mocks)
+        Loader.MockClient.apply(mocks, "forever")
+        foreverWorld.apply(mocks, Kit)
+    end
     if mutate then mutate(mocks) end
     -- `_G` must resolve to a table that answers from THIS instance's mocks. Nearly every WoW-API
     -- read in this addon is written `_G.C_SpecializationInfo`, `_G.InCombatLockdown`, `_G.UnitGUID`
@@ -126,7 +177,7 @@ local function loadInstance(initDB, enable, mutate, opts)
     mocks._G = Loader.makeEnv(mocks)
     local NS = {}
     Loader.loadAll((opts and opts.libFiles) or LIB_FILES, NS, mocks)
-    loadTocFiles(NS, mocks, opts and opts.afterFile)
+    loadTocFiles(NS, mocks, retailShapedSeed(mocks, opts))
     -- OnInitialize is pcall'd only so the raise can be KEPT, never dropped (KICKCD-R-11). It used
     -- to be pcall'd and discarded, so a load whose init raised came back looking exactly like one
     -- that built a db: every case on it measured a half-initialized addon, and the shared instance
@@ -170,6 +221,11 @@ local SUITES = {
     "test_envsetup",
     "test_util_anchor",
     "test_constants",
+    "test_spells_forever",
+    "test_spell_ranks",
+    "test_seed_clients",
+    "test_admission_clients",
+    "test_spells_page_clients",
     "test_state",
     "test_events",
     "test_event_routes",
@@ -181,15 +237,22 @@ local SUITES = {
     "test_color_shape",
     "test_bus",
     "test_compat",
+    "test_compat_client",
+    "test_forever_world",
     "test_compat_api",
     "test_compat_debug",
     "test_compat_units",
+    "test_spec_reads",
+    "test_interrupt_flag",
     "test_sim_seam",
     "test_sim_world",
     "test_sim_session",
     "test_sim_interference",
     "test_sim_drivers",
     "test_sim_e2e",
+    "test_sim_clients",
+    "test_probe",
+    "test_client_shape",
     "test_sim_marker",
     "test_sim_checkbox",
     "test_debuglog",
@@ -218,6 +281,7 @@ local SUITES = {
     "test_castbar_frame",
     "test_castbar_skin",
     "test_castbar_debug",
+    "test_debug_secrets",
     "test_cooldowns",
     "test_cooldowns_gates",
     "test_cooldowns_refresh",
@@ -393,7 +457,52 @@ local function withViewedUnit(fn)
     if not ok then error(err, 0) end
 end
 
+-- ---------------------------------------------------------------------------
+-- Ka0s Default by name (MKF-KC-02; the WoW Forever port design 3.2)
+-- ---------------------------------------------------------------------------
+--
+-- A case that measures Ka0s Default's pixels selects that skin by NAME rather than leaning on the
+-- client's default, which is the WoW Forever skin under `KA0S_KIT_CLIENT=forever` (skinning-§2).
+-- It pins NS.DEFAULT_SKIN straight after core/SkinSetup.lua reads it from the library, so the
+-- profile default (defaults/Profile.lua), the pre-store fallback and the migrations all name
+-- "ka0s" on both kit profiles. Merged into the case's own `opts`, which it may already carry.
+
+--- `opts` (or a fresh table) with an afterFile hook that pins Ka0s Default as the default skin.
+local function ka0sDefault(opts)
+    local out = {}
+    for k, v in pairs(opts or {}) do out[k] = v end
+    local hooks = {}
+    for k, v in pairs(out.afterFile or {}) do hooks[k] = v end
+    local prior = hooks["core/SkinSetup.lua"]
+    hooks["core/SkinSetup.lua"] = function(NS)
+        if prior then prior(NS) end
+        NS.DEFAULT_SKIN = "ka0s"
+    end
+    out.afterFile = hooks
+    return out
+end
+
+-- `RETAIL_ONLY` is the declared-skip reason (the kit's `test(name, fn, reason)`) for a case of a
+-- Retail-only feature on the forever profile, where the feature is absent and its own per-client case
+-- asserts the absence (clients-§6; LootHistory's and DropWatcher's tests/run.lua precedent). The
+-- Blizzard Cooldown Manager gate is the one so far (the WoW Forever port, MKF-KC-12,
+-- tests/test_admission_clients.lua). Nil on Retail, which runs the case.
+local FOREVER = shared.mocks.WOW_PROJECT_CAMELOT ~= nil
+    and shared.mocks.WOW_PROJECT_ID == shared.mocks.WOW_PROJECT_CAMELOT
+local RETAIL_ONLY = FOREVER and "Retail-only feature (the WoW Forever port, R8): the Cooldown Manager gate "
+    .. "is absent on WoW Forever, which tests/test_admission_clients.lua asserts" or nil
+
+-- Retail's project constants on a mock set, whatever KA0S_KIT_CLIENT says: a case of a Retail-only
+-- behavior (the empowered cast's routes, the Retail story of the simulator; MKF-KC-15) calls it from
+-- its mutate hook, so it runs, and passes, on both kit profiles.
+local function retailClient(mocks)
+    Loader.makeEnv(mocks)
+    Loader.MockClient.apply(mocks, "retail")
+end
+
 _G.KICKCD_TEST = Kit.expose{
+    RETAIL_ONLY = RETAIL_ONLY,
+    retailClient = retailClient,
     root = root,
     -- shared instance
     NS = shared.NS,
@@ -409,6 +518,16 @@ _G.KICKCD_TEST = Kit.expose{
     -- Guaranteed-run fixture wrappers; see the block above.
     withFocusLink  = withFocusLink,
     withViewedUnit = withViewedUnit,
+    -- Ka0s Default by name; see the block above.
+    ka0sDefault = ka0sDefault,
+    -- The WoW Forever world (tests/wow_mock_forever.lua) and typed secrets (MKF-KC-02). A case
+    -- loads the world with `T.load(init, enable, mutate, { world = "forever" })`; typedSecrets
+    -- installs the secrets alone, on a mock set of either client, from a mutate hook.
+    foreverWorld = foreverWorld,
+    typedSecrets = function(mocks) foreverWorld.typedSecrets(mocks, Kit) end,
+    secret = Kit.secret,
+    isSecret = Kit.isSecret,
+    reveal = Kit.reveal,
 }
 
 -- ---------------------------------------------------------------------------

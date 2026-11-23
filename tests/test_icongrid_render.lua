@@ -526,6 +526,34 @@ test("the unit label's text is part of the display while shown on the grid", fun
     w.scr.restore()
 end)
 
+test("a label attached to the cast bar is a member only while the bar is anchored (KC-REV-1)", function()
+    -- Pins tipGroup's label rule across its split into helpers (CCN 18 -> under 15).
+    local w = tipWorld(1920, 600, 200)
+    local lbl = w.NS:GetModule("UnitLabel"):PeekInstance("target")
+    local style = w.NS.Units.LabelStyle("target")
+    lbl.frame:Show()
+    local function hasLabel()
+        for _, f in ipairs(w.IG.TipGroup("target")) do
+            if rawequal(f, lbl.text) then return true end
+        end
+        return false
+    end
+    style.attach = "castbar"
+    w.NS.Units.Castbar("target").anchorMode = "PRIMARY"
+    assertTrue(hasLabel(), "on an anchored bar the label is part of the display")
+    w.NS.Units.Castbar("target").anchorMode = "FREE"
+    assertFalse(hasLabel(), "on a free bar it belongs to the bar's own display")
+    style.attach = "icons"
+    assertTrue(hasLabel(), "attached to the icons it is a member whatever the bar does")
+    style.attach = "screen"
+    assertFalse(hasLabel(), "any other attachment is not")
+    style.attach = "icons"
+    lbl.frame:Hide()
+    assertFalse(hasLabel(), "a hidden label never is")
+    w.NS.Units.Castbar("target").anchorMode = "PRIMARY"
+    w.scr.restore()
+end)
+
 test("a tooltip that grows after it is placed is placed again, re-clamped to the screen", function()
     -- SetSpellByID on uncached data: the client fills the tooltip later and it grows. Placed for
     -- 100 px tall, its top sits level with the icon's (440); grown to 500 px it would run 60 px off

@@ -500,6 +500,10 @@ local DEBUG_COMMANDS = {
                     "Compat.DebugInterrupt unavailable")
             end
         end},
+    -- The WoW Forever port's probe (MKF-KC-16, modules/Probe.lua): records client facts into
+    -- db.global.probe until stopped. Its own one-line answers stay in chat.
+    {"probe", "Record client facts for the WoW Forever port: probe start, stop, status or clear",
+        function(_, rest) NS.Probe.OnVerb(rest) end},
     {"window", "Toggle the debug console window",
         function(self)
             if self.DebugLog then self.DebugLog:Toggle()
@@ -728,7 +732,25 @@ local function resolvePlayerClassSpec()
     return classFile, NS.Util.PlayerSpecID()
 end
 
+-- WoW Forever's [CLASS [SPEC]] (MKF-KC-13, critic C6): validated, because a list keyed by a Retail
+-- token would be an orphan no character reads. The class must be a Forever class, and its one spec
+-- is the list; a SPEC typed after it must name that spec. Answers (class, spec) or nil, nil and the
+-- line to refuse with.
+local function resolveForeverClass(args, idx)
+    local pClass = resolvePlayerClassSpec()
+    local class = normClass(args[idx]) or pClass
+    if not class then return nil, nil, "Could not determine class" end
+    if not NS.Database.IsKnownClass(class) then return nil, nil, "Unknown class " .. class end
+    local spec = NS.Const.SPEC_FOREVER[class]
+    local typed = args[idx + 1]
+    if typed ~= nil and NS.Util.ResolveSpecID(typed, class) ~= spec then
+        return nil, nil, ("Unknown spec %s for %s"):format(typed, class)
+    end
+    return class, spec
+end
+
 local function resolveClassSpec(args, idx)
+    if NS.Util.OneSpecPerClass() then return resolveForeverClass(args, idx) end
     local class = normClass(args[idx])
     local pClass, pSpec = resolvePlayerClassSpec()
     -- Resolve the spec AGAINST the class the user gave (or their own), so a
@@ -784,10 +806,11 @@ end
 
 local function spellsList(self, rest)
     local args = tokenize(rest)
-    local class, spec = resolveClassSpec(args, 1)
+    local class, spec, bad = resolveClassSpec(args, 1)
+    if bad then return spellsRefuse(self, "list", "class/spec invalid", bad) end
     if not (class and spec) then
-        return spellsRefuse(self, "list", "class/spec unresolved", "Could not determine class+spec; specify them: "
-                 .. "/kcd spells list <CLASS> <SPEC>")
+        return spellsRefuse(self, "list", "class/spec unresolved", NS.Util.SpellsWords("Could not determine class+spec; specify them: "
+                 .. "/kcd spells list <CLASS> <SPEC>"))
     end
     local list = getSpellList(class, spec)
     if not list or #list == 0 then
@@ -836,9 +859,10 @@ local function spellsRemove(self, rest)
     local args = tokenize(rest)
     local id = tonumber(args[1])
     if not id then
-        return spellsRefuse(self, "remove", "no spell id", "Usage: /kcd spells remove <id> [CLASS SPEC]")
+        return spellsRefuse(self, "remove", "no spell id", NS.Util.SpellsWords("Usage: /kcd spells remove <id> [CLASS SPEC]"))
     end
-    local class, spec = resolveClassSpec(args, 2)
+    local class, spec, bad = resolveClassSpec(args, 2)
+    if bad then return spellsRefuse(self, "remove", "class/spec invalid", bad) end
     local list = getSpellList(class, spec)
     if not list then
         return spellsRefuse(self, "remove", "no spell list", ("No spell list for %s/%s"):format(
@@ -856,9 +880,10 @@ local function spellsSetEnabled(self, rest, enabled)
     local id = tonumber(args[1])
     if not id then
         return spellsRefuse(self, enabled and "enable" or "disable", "no spell id",
-                  ("Usage: /kcd spells %s <id> [CLASS SPEC]"):format(enabled and "enable" or "disable"))
+                  NS.Util.SpellsWords(("Usage: /kcd spells %s <id> [CLASS SPEC]"):format(enabled and "enable" or "disable")))
     end
-    local class, spec = resolveClassSpec(args, 2)
+    local class, spec, bad = resolveClassSpec(args, 2)
+    if bad then return spellsRefuse(self, enabled and "enable" or "disable", "class/spec invalid", bad) end
     local list = getSpellList(class, spec)
     if not list then
         return spellsRefuse(self, enabled and "enable" or "disable", "no spell list",
@@ -878,7 +903,7 @@ local function spellsSetCategory(self, rest)
     local cat = args[2] and args[2]:lower() or nil
     if not (id and cat) then
         return spellsRefuse(self, "category", "no spell id or category",
-                  "Usage: /kcd spells category <id> <cat> [CLASS SPEC]")
+                  NS.Util.SpellsWords("Usage: /kcd spells category <id> <cat> [CLASS SPEC]"))
     end
     if not CATEGORIES[cat] then
         local names = {}
@@ -887,7 +912,8 @@ local function spellsSetCategory(self, rest)
         return spellsRefuse(self, "category", "unknown category",
                   "Unknown category. Allowed: " .. table.concat(names, ", "), cat)
     end
-    local class, spec = resolveClassSpec(args, 3)
+    local class, spec, bad = resolveClassSpec(args, 3)
+    if bad then return spellsRefuse(self, "category", "class/spec invalid", bad) end
     local list = getSpellList(class, spec)
     if not list then
         return spellsRefuse(self, "category", "no spell list", ("No spell list for %s/%s"):format(
@@ -908,9 +934,10 @@ end
 -- player's racial on their own class.
 local function spellsReset(self, rest)
     local args = tokenize(rest)
-    local class, spec = resolveClassSpec(args, 1)
+    local class, spec, bad = resolveClassSpec(args, 1)
+    if bad then return spellsRefuse(self, "reset", "class/spec invalid", bad) end
     if not (class and spec) then
-        return spellsRefuse(self, "reset", "class/spec unresolved", "Could not determine class+spec")
+        return spellsRefuse(self, "reset", "class/spec unresolved", NS.Util.SpellsWords("Could not determine class+spec"))
     end
     if not self.Database then return spellsRefuse(self, "reset", "db not ready", "db not ready") end
     if not self.Database:ResetSpellList(class, spec) then
@@ -953,9 +980,14 @@ function runSpells(self, rest)
     local sub, rem = NS.Slash.SplitVerb(rest)
     if sub == "" then
         p(self, "spells subcommands")
-        for _, row in ipairs(NS.Slash.CommandRows("/kcd spells", SPELLS_COMMANDS, "  ")) do p(self, row) end
+        -- Each row in the running client's words (MKF-KC-13): `[CLASS]` on WoW Forever.
+        for _, row in ipairs(NS.Slash.CommandRows("/kcd spells", SPELLS_COMMANDS, "  ")) do
+            p(self, NS.Util.SpellsWords(row))
+        end
         local cls, spc = resolvePlayerClassSpec()
-        if cls and spc then
+        if cls and spc and NS.Util.OneSpecPerClass() then
+            p(self, ("  (default class when omitted: %s)"):format(cls))
+        elseif cls and spc then
             p(self, ("  (default class/spec when omitted: %s/%s)"):format(cls, sd(spc)))
         end
         return

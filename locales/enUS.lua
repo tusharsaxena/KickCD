@@ -86,6 +86,8 @@ L["Enable the Target or the Focus grid first: the simulation plays on them."] =
     "Enable the Target or the Focus grid first: the simulation plays on them."
 L["Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."] =
     "Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."
+L["Your class tracks no spell you can use: add one with /kcd spells add, then start again."] =
+    "Your class tracks no spell you can use: add one with /kcd spells add, then start again."
 L["This client cannot build simulated cooldowns, so the simulator cannot run."] =
     "This client cannot build simulated cooldowns, so the simulator cannot run."
 L["Simulation started (%s): nothing is cast, nothing is saved, and your settings are not touched."] =
@@ -232,6 +234,8 @@ L["Hollow King"] =
     "Hollow King"
 L["Mythic+ pull, several kickers"] =
     "Mythic+ pull, several kickers"
+L["Dungeon pull, several kickers"] =
+    "Dungeon pull, several kickers"
 L["Boss kick rotation"] =
     "Boss kick rotation"
 L["Kick on cooldown, uninterruptible cast"] =
@@ -507,6 +511,7 @@ L["Cannot open settings during combat."] = "cannot open settings during combat â
 
 -- Spells editor
 L["Class and specialization"]    = "Class and specialization"
+L["Class"]                       = "Class"
 L["Add a spell"] = "Add a spell"
 L["Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."] = "Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."
 L["not tracked"] = "not tracked"
@@ -525,6 +530,8 @@ L["Spell ID or name"]            = "Spell ID or name"
 L["Invalid spell"]               = "Invalid spell"
 L["Reset all spells for this spec to addon defaults?"] =
     "Reset all spells for this spec to addon defaults?"
+L["Reset all spells for this class to addon defaults?"] =
+    "Reset all spells for this class to addon defaults?"
 
 -- Categories (closed set; matches CATEGORIES in settings/Spells.lua)
 L["interrupt"]                   = "Interrupt"
@@ -840,6 +847,8 @@ L["Charges"]                     = "Charges"
 L["Spell list"]                  = "Spell list"
 L["The tracked spells for the selected specialization, in priority order."] =
     "The tracked spells for the selected specialization, in priority order."
+L["The tracked spells for the selected class, in priority order."] =
+    "The tracked spells for the selected class, in priority order."
 L["Drag to reorder"]             = "Drag to reorder"
 L["Cast time color"]             = "Cast time color"
 L["Font (both texts)"]           = "Font (both texts)"

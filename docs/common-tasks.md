@@ -76,7 +76,7 @@ so **do not** write a parallel mutator for a field that already has a row.
    `root`, `fear`, `displace`, `racial`, `other`.
 4. An existing profile does **not** pick up the new entry automatically — `/kcd resetall` re-seeds
    every spec's spell list, and that is what a tester needs to run.
-5. The id is the **cast's**, the one the player presses: KickCD asks `IsPlayerSpell` and polls
+5. The id is the **cast's**, the one the player presses: KickCD asks `C_SpellBook` and polls
    `GetSpellCooldown` on it, so an aura id names the right ability and still tracks nothing. The
    seed check (`tools/seeds/seeds.py`, [validate-seeds.md](validate-seeds.md)) flags an id the spec
    cannot learn on the current build; run it after a patch, or after a batch of hand edits.

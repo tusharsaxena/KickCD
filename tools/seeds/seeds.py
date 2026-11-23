@@ -42,12 +42,17 @@ WHAT THIS IS
                      order), so a CC candidate is a proposal for the owner, not a conclusion.
 
 THE STEPS (docs/validate-seeds.md is the contract /dev-copilot:validate-seeds runs)
-    python3 tools/seeds/seeds.py status
-    python3 tools/seeds/seeds.py derive --bundle docs/seed-research/<date>-retail --date <date> [--build <v>] [--replay]
-    python3 tools/seeds/seeds.py check  --bundle docs/seed-research/<date>-retail
-    python3 tools/seeds/seeds.py rule   --tsv rulings.tsv --bundle docs/seed-research/<date>-retail
-    python3 tools/seeds/seeds.py report --bundle docs/seed-research/<date>-retail --date <date>
-    python3 tools/seeds/seeds.py apply  --bundle docs/seed-research/<date>-retail --date <date>
+    python3 tools/seeds/seeds.py status --flavor <flavor>
+    python3 tools/seeds/seeds.py derive --flavor <flavor> --bundle docs/seed-research/<date>-<flavor> --date <date> [--build <v>] [--replay]
+    python3 tools/seeds/seeds.py check  --flavor <flavor> --bundle docs/seed-research/<date>-<flavor>
+    python3 tools/seeds/seeds.py rule   --flavor <flavor> --tsv rulings.tsv --bundle docs/seed-research/<date>-<flavor>
+    python3 tools/seeds/seeds.py report --flavor <flavor> --bundle docs/seed-research/<date>-<flavor> --date <date>
+    python3 tools/seeds/seeds.py apply  --flavor <flavor> --bundle docs/seed-research/<date>-<flavor> --date <date>
+
+    `--flavor` is `retail` (the default) or `forever`. A flavor is one client's seed file, rulings
+    file, wago.tools product, table list, reach model and hand candidates (Flavor below). The
+    `forever` flavor lives in forever.py: product `wowf`, defaults/Spells_Forever.lua,
+    rulings_forever.json, a reach model for WoW Forever's tables and one candidate per rank family.
 
     `derive` pins one build (--build, else the live `wow` build from the builds API), streams each
     table into the git-ignored .cache/, freezes a gzipped copy of every table it read into the
@@ -285,11 +290,11 @@ def freeze(source: Path, member: Path) -> None:
         shutil.copyfileobj(src, dst, DOWNLOAD_CHUNK)
 
 
-def bundle_tables(bundle: Path, build: str, replay: bool, cache_dir: Path) -> dict:
-    """`{table: path}` for every table in TABLES: the bundle's raw/ member on --replay (a missing
-    one is fatal), else the cache, frozen into raw/."""
+def bundle_tables(bundle: Path, build: str, replay: bool, cache_dir: Path, tables=None) -> dict:
+    """`{table: path}` for every table in `tables` (a flavor's list; TABLES by default): the
+    bundle's raw/ member on --replay (a missing one is fatal), else the cache, frozen into raw/."""
     out = {}
-    for table, _why in TABLES:
+    for table, _why in (TABLES if tables is None else tables):
         member = bundle / "raw" / ("%s.csv.gz" % table)
         if replay:
             if not member.exists():
@@ -574,17 +579,19 @@ SPEC_OPEN = re.compile(r"^        \[SPEC\.(?P<alias>[A-Z_]+)\] = \{\s*$")
 ENTRY = re.compile(r'^(?P<indent>\s*)\{ spellID = (?P<id>\d+),\s*category = "(?P<cat>\w+)",\s*'
                    r'enabled = (?P<enabled>true|false) \},\s*(?:-- (?P<comment>.*?))?\s*$')
 BLOCK_CLOSE = re.compile(r"^        \},\s*$")
-RACE_OPEN = re.compile(r"^NS\.RaceCastStoppers = \{\s*$")
+# NS.RaceCastStoppers in defaults/Spells.lua, NS.RaceCastStoppersForever in defaults/Spells_Forever.lua.
+RACE_OPEN = re.compile(r"^NS\.RaceCastStoppers(?:Forever)? = \{\s*$")
 RACE_ENTRY = re.compile(r"^\s*(?P<race>\w+)\s*=\s*(?P<id>\d+),\s*(?:-- (?P<comment>.*?))?\s*$")
 ASIDE = re.compile(r"\s*\([^)]*\)\s*$")
 
 
-def read_spec_ids(path: Path = CONSTANTS_PATH) -> dict:
-    """`Const.SPEC` from core/Constants.lua: alias -> numeric spec id."""
+def read_spec_ids(path: Path = CONSTANTS_PATH, table: str = "SPEC") -> dict:
+    """`Const.<table>` from core/Constants.lua (`SPEC`, or a flavor's own table such as
+    `SPEC_FOREVER`): alias -> numeric spec id."""
     text = path.read_text(encoding="utf-8")
-    block = re.search(r"Const\.SPEC = \{(.*?)\n\}", text, re.S)
+    block = re.search(r"Const\.%s = \{(.*?)\n\}" % re.escape(table), text, re.S)
     if not block:
-        raise SystemExit("%s: no Const.SPEC table." % path)
+        raise SystemExit("%s: no Const.%s table." % (path, table))
     return {m.group(1): int(m.group(2)) for m in re.finditer(r"(\w+) = (\d+)", block.group(1))}
 
 
@@ -715,20 +722,23 @@ def race_flags(db: Build, races: list) -> list:
 
 def hand_candidates(db: Build, block: dict, reach: dict, missing: list,
                     entries=HAND_CANDIDATES) -> list:
-    """HAND_CANDIDATES for this spec that the build names, the spec reaches and the list lacks."""
+    """HAND_CANDIDATES for this spec that the build names, the spec reaches and the list lacks.
+    A `racial` hand entry is reached the way a shipped racial is (flag_reach): racials are never a
+    rule's candidate source, so a racial in a class list is always a hand call."""
     shipped = {e["id"] for e in block["entries"]}
     out = []
     for klass, alias, spell, category, why in entries:
         if (klass, alias) != (block["class"], block["alias"]) or spell in shipped:
             continue
-        if not db.names.get(spell) or spell not in reach:
+        where = db.flag_reach(block["spec"]) if category == "racial" else reach
+        if not db.names.get(spell) or spell not in where:
             missing.append({"class": klass, "alias": alias, "id": spell, "why": why})
             continue
         out.append({"key": "%s:%d:%d" % (klass, block["spec"], spell), "class": klass,
                     "spec": block["spec"], "alias": alias, "id": spell, "name": db.names[spell],
                     "group": "interrupt" if category == "interrupt" else "cc", "category": category,
                     "evidence": dict(db.evidence(spell), hand=[why]),
-                    "cooldownMs": db.cooldown.get(spell, 0), "reach": sorted(set(reach[spell]))})
+                    "cooldownMs": db.cooldown.get(spell, 0), "reach": sorted(set(where[spell]))})
     return out
 
 
@@ -751,7 +761,8 @@ def spec_candidates(db: Build, block: dict, reach: dict) -> list:
     return out
 
 
-def derive(db: Build, seeds: dict, build: str, date: str) -> dict:
+def derive(db: Build, seeds: dict, build: str, date: str, flavor=None) -> dict:
+    flavor = flavor or RETAIL
     candidates, flags, specs, missing = [], [], [], []
     for block in seeds["specs"]:
         if db.spec_class.get(block["spec"]) != block["class"]:
@@ -761,8 +772,9 @@ def derive(db: Build, seeds: dict, build: str, date: str) -> dict:
         interrupts = spec_interrupts(db, reach)
         flags.extend(entry_flags(db, block, db.flag_reach(block["spec"]), interrupts))
         found = spec_candidates(db, block, reach)
-        found += [c for c in hand_candidates(db, block, reach, missing)
+        found += [c for c in hand_candidates(db, block, reach, missing, flavor.hand)
                   if c["key"] not in {f["key"] for f in found}]
+        found = flavor.finish(db, block, found)
         candidates.extend(found)
         specs.append({"class": block["class"], "spec": block["spec"], "alias": block["alias"],
                       "name": db.spec_name.get(block["spec"], ""), "reach": len(reach),
@@ -771,7 +783,7 @@ def derive(db: Build, seeds: dict, build: str, date: str) -> dict:
     flags.extend(race_flags(db, seeds["races"]))
     shipped = sum(len(b["entries"]) for b in seeds["specs"]) + len(seeds["races"])
     distinct = {e["id"] for b in seeds["specs"] for e in b["entries"]} | {r["id"] for r in seeds["races"]}
-    return {"client": CLIENT, "product": PRODUCT, "build": build, "date": date,
+    return {"client": flavor.client, "product": flavor.product, "build": build, "date": date,
             "tool": "tools/seeds/seeds.py derive", "shippedEntries": shipped,
             "shippedIds": len(distinct), "specs": specs, "candidates": candidates, "flags": flags,
             "handMissing": missing}
@@ -821,11 +833,16 @@ def set_ruling(rulings: dict, key: str, ruling: str, reason: str) -> None:
     rulings[key] = {"ruling": ruling, "reason": reason}
 
 
-def load_candidates(bundle: Path) -> dict:
+def load_candidates(bundle: Path, flavor=None) -> dict:
+    """The bundle's candidates.json. With `flavor`, refuses a bundle another flavor derived: its
+    keys would be ruled into, or applied from, the wrong client's files."""
     path = bundle / "candidates.json"
     if not path.exists():
         raise SystemExit("%s has no candidates.json: run derive first." % bundle)
-    return json.loads(path.read_text(encoding="utf-8"))
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if flavor is not None and doc.get("client", flavor.client) != flavor.client:
+        raise SystemExit("%s is a %s bundle; this run's flavor is %s." % (bundle, doc.get("client"), flavor.client))
+    return doc
 
 
 def all_keys(doc: dict) -> list:
@@ -850,6 +867,11 @@ def plan_apply(doc: dict, rulings: dict) -> tuple:
     return inserts, removals
 
 
+# The layout an entry takes in a list with no entry to copy it from (a flavor's first seed run):
+# the column layout of defaults/Spells.lua.
+DEFAULT_ENTRY_TEMPLATE = '            { spellID = 47528,  category = "interrupt",    enabled = true },'
+
+
 def format_entry(template: str, spell: int, category: str, comment: str) -> str:
     """An entry line in the block's own layout: `category` and `enabled` start in the columns
     they start in on `template` (another entry of the same block), at least one space apart."""
@@ -862,13 +884,30 @@ def format_entry(template: str, spell: int, category: str, comment: str) -> str:
     return line + "enabled = true }, -- %s" % comment
 
 
-def apply_text(text: str, doc: dict, rulings: dict, date: str, spec_ids: dict | None = None) -> tuple:
-    """`(new text, change log)` for defaults/Spells.lua's text. Line endings are kept.
+def insert_at(cand: dict, block: dict, entries: list, slot) -> tuple:
+    """`(line index, is_cc)`: where apply_text inserts an accepted candidate (its docstring), and
+    whether it goes in the CC bucket, which follows any interrupt inserted at the same line."""
+    if slot is not None:
+        return slot, False  # the same ability under its right id: it takes the removed entry's place
+    if cand["category"] != "interrupt":
+        return block["close"], True
+    lead = 0
+    while lead < len(entries) and entries[lead]["category"] == "interrupt":
+        lead += 1
+    return (entries[lead]["line"] if lead < len(entries) else block["close"]), False
+
+
+def apply_text(text: str, doc: dict, rulings: dict, date: str, spec_ids: dict | None = None,
+               comment_format: str = "%s (DB2 re-validation %s)") -> tuple:
+    """`(new text, change log)` for a seed file's text. Line endings are kept.
 
     Where an accepted candidate goes in its spec's list, which is the priority order:
       - in the place of a removed entry of the same name in the same list (a corrected id);
-      - else an interrupt after the interrupts the list leads with (index 1 is the primary);
+      - else an interrupt after the interrupts the list leads with (index 1 is the primary), and
+        ahead of any CC this run adds at the same place (an empty list's first run);
       - else at the end of the list.
+    An entry copies the layout of the list's first entry, or DEFAULT_ENTRY_TEMPLATE in a list
+    with none.
     """
     inserts, removals = plan_apply(doc, rulings)
     newline = "\r\n" if "\r\n" in text else "\n"
@@ -892,30 +931,25 @@ def apply_text(text: str, doc: dict, rulings: dict, date: str, spec_ids: dict | 
                 replaced.setdefault((flag["class"], flag["spec"], (flag["name"] or "").lower()), entry["line"])
                 changes.append("%s %s: -%d" % (flag["class"], flag["alias"], flag["id"]))
     added = defaultdict(list)  # line index -> lines to insert before it
+    added_cc = defaultdict(list)  # the same, for CC: after the interrupts inserted there
     for cand in inserts:
         block = blocks.get((cand["class"], cand["spec"]))
         if block is None or any(e["id"] == cand["id"] for e in block["entries"]):
             continue
         entries = [e for e in block["entries"] if e["line"] not in drop]
-        template = lines[(entries or block["entries"])[0]["line"]]
-        comment = "%s (DB2 re-validation %s)" % (cand["name"], date)
+        listed = entries or block["entries"]
+        template = lines[listed[0]["line"]] if listed else DEFAULT_ENTRY_TEMPLATE
+        comment = comment_format % (cand["name"], date)
         line = format_entry(template, cand["id"], cand["category"], comment)
         slot = replaced.get((cand["class"], cand["spec"], cand["name"].lower()))
-        if slot is not None:
-            at = slot  # the same ability under its right id: it takes the removed entry's place
-        elif cand["category"] == "interrupt":
-            lead = 0
-            while lead < len(entries) and entries[lead]["category"] == "interrupt":
-                lead += 1
-            at = entries[lead]["line"] if lead < len(entries) else block["close"]
-        else:
-            at = block["close"]
-        added[at].append(line)
+        at, is_cc = insert_at(cand, block, entries, slot)
+        (added_cc if is_cc else added)[at].append(line)
         changes.append("%s %s: +%d %s (%s)" % (cand["class"], cand["alias"], cand["id"],
                                                cand["name"], cand["category"]))
     out = []
     for index, line in enumerate(lines):
         out.extend(added.get(index, ()))
+        out.extend(added_cc.get(index, ()))
         if index not in drop:
             out.append(line)
     return newline.join(out), changes
@@ -933,14 +967,15 @@ def _evidence(ev: dict) -> str:
     return "; ".join("%s: %s" % (k, ", ".join(v[:2])) for k, v in sorted(ev.items()))
 
 
-def format_rulings_md(doc: dict, rulings: dict, date: str) -> str:
+def format_rulings_md(doc: dict, rulings: dict, date: str, flavor=None) -> str:
+    flavor = flavor or RETAIL
     tally = defaultdict(int)
     for key in all_keys(doc):
         tally[rulings.get(key, {}).get("ruling", "unruled")] += 1
     unruled = unruled_keys(doc, rulings)
-    out = ["# Rulings: Retail seed validation, %s (build %s)" % (doc["date"], doc["build"]), "",
+    out = ["# Rulings: %s seed validation, %s (build %s)" % (flavor.label, doc["date"], doc["build"]), "",
            "Generated by `tools/seeds/seeds.py report` on %s from this bundle's `candidates.json` "
-           "and `tools/seeds/rulings_retail.json`. Do not edit by hand." % date, "",
+           "and `tools/seeds/%s`. Do not edit by hand." % (date, flavor.rulings_path.name), "",
            "%d shipped entries (%d distinct ids), %d flags, %d candidates: %s." % (
                doc["shippedEntries"], doc["shippedIds"], len(doc["flags"]), len(doc["candidates"]),
                ", ".join("%d %s" % (n, r) for r, n in sorted(tally.items()))), ""]
@@ -976,19 +1011,21 @@ def format_rulings_md(doc: dict, rulings: dict, date: str) -> str:
     return "\n".join(out)
 
 
-def format_sources_md(doc: dict, date: str) -> str:
-    out = ["# Sources: Retail seed validation, %s" % date, "",
+def format_sources_md(doc: dict, date: str, flavor=None) -> str:
+    flavor = flavor or RETAIL
+    out = ["# Sources: %s seed validation, %s" % (flavor.label, date), "",
            "Written by `tools/seeds/seeds.py derive`. Frozen: never edited after the run, apart from "
            "the hand-written `ANALYSIS.md` beside it.", "",
            "| Field | Value |", "| --- | --- |",
-           "| Client | `%s` (wago.tools product `%s`) |" % (CLIENT, PRODUCT),
+           "| Client | `%s` (wago.tools product `%s`) |" % (flavor.client, flavor.product),
            "| Build | `%s` |" % doc["build"],
            "| Run date | %s (the run's `--date` argument; the tool never reads the clock) |" % date,
            "| Builds API | <%s> |" % BUILDS_URL,
            "| User-Agent | `%s` |" % USER_AGENT,
-           "| Seed file | `defaults/Spells.lua`: %d entries, %d distinct ids |" % (doc["shippedEntries"], doc["shippedIds"]),
+           "| Seed file | `defaults/%s`: %d entries, %d distinct ids |" % (
+               flavor.seeds_path.name, doc["shippedEntries"], doc["shippedIds"]),
            "", "## Tables", "", "| Table | Why | URL |", "| --- | --- | --- |"]
-    for table, why in TABLES:
+    for table, why in flavor.tables:
         url = CSV_URL.format(table=table, build=doc["build"])
         out.append("| `%s` | %s | <%s> |" % (table, why, url))
     out += ["", "Every table is frozen gzipped in `raw/`, and `seeds.py derive --replay` re-derives "
@@ -1004,6 +1041,43 @@ def format_sources_md(doc: dict, date: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Flavors
+# ---------------------------------------------------------------------------
+
+class Flavor:
+    """One client's seed run: what it reads (product, tables, the seed file and its Const table),
+    how it reaches spells (the Build class), the hand candidates it adds, how it finishes a spec's
+    candidates and what it writes (the rulings file, the bundle suffix, an applied entry's
+    comment). Retail is RETAIL here; forever.py registers FOREVER."""
+
+    def __init__(self, client, label, product, seeds_path, rulings_path, spec_table, tables,
+                 build_cls, hand=(), finish=None, comment="%s (DB2 re-validation %s)"):
+        self.client, self.label, self.product = client, label, product
+        self.seeds_path, self.rulings_path, self.spec_table = seeds_path, rulings_path, spec_table
+        self.tables, self.build_cls, self.hand, self.comment = tables, build_cls, hand, comment
+        self.finish = finish or (lambda _db, _block, found: found)
+        self.suffix = "-" + client
+
+    def spec_ids(self) -> dict:
+        return read_spec_ids(CONSTANTS_PATH, self.spec_table)
+
+
+RETAIL = Flavor("retail", "Retail", PRODUCT, SEEDS_PATH, RULINGS_PATH, "SPEC", TABLES, Build,
+                hand=HAND_CANDIDATES)
+FLAVOR_NAMES = ("retail", "forever")
+
+
+def get_flavor(name: str) -> Flavor:
+    """The flavor `name`. forever.py imports this module, so it is loaded on first use."""
+    if name == "retail":
+        return RETAIL
+    if name == "forever":
+        import forever  # noqa: F401  (tools/seeds/forever.py; sys.path holds this directory)
+        return forever.FOREVER
+    raise SystemExit("unknown flavor %r (one of %s)" % (name, ", ".join(FLAVOR_NAMES)))
+
+
+# ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
@@ -1013,8 +1087,8 @@ def _date(value: str) -> str:
     return value
 
 
-def bundles(root: Path) -> list:
-    return sorted(p for p in root.glob("*" + BUNDLE_SUFFIX) if (p / "candidates.json").exists())
+def bundles(root: Path, suffix: str = BUNDLE_SUFFIX) -> list:
+    return sorted(p for p in root.glob("*" + suffix) if (p / "candidates.json").exists())
 
 
 def status_line(live: str, found: list) -> str:
@@ -1030,22 +1104,23 @@ def status_line(live: str, found: list) -> str:
 
 
 def cmd_status(args) -> int:
-    print(status_line(live_build(), bundles(args.root)))
+    print(status_line(live_build(args.flavor.product), bundles(args.root, args.flavor.suffix)))
     return 0
 
 
 def cmd_derive(args) -> int:
+    flavor = args.flavor
     build = args.build
     if args.replay and not build:
-        build = load_candidates(args.bundle)["build"]
+        build = load_candidates(args.bundle, flavor)["build"]
     if not build:
-        build = live_build()
-    log("Build %s (%s)" % (build, "replay" if args.replay else "wago.tools"))
-    tables = bundle_tables(args.bundle, build, args.replay, args.cache_dir)
-    db = Build(tables)
-    doc = derive(db, read_seeds(args.seeds), build, args.date)
+        build = live_build(flavor.product)
+    log("Build %s (%s, %s)" % (build, flavor.client, "replay" if args.replay else "wago.tools"))
+    tables = bundle_tables(args.bundle, build, args.replay, args.cache_dir, flavor.tables)
+    db = flavor.build_cls(tables)
+    doc = derive(db, read_seeds(args.seeds, flavor.spec_ids()), build, args.date, flavor)
     write_json(args.bundle / "candidates.json", doc)
-    write_text(args.bundle / "SOURCES.md", format_sources_md(doc, args.date))
+    write_text(args.bundle / "SOURCES.md", format_sources_md(doc, args.date, flavor))
     unruled = unruled_keys(doc, load_rulings(args.rulings))
     groups = defaultdict(int)
     for c in doc["candidates"]:
@@ -1064,7 +1139,7 @@ def cmd_rule(args) -> int:
         todo += read_tsv(args.tsv)
     if not todo:
         raise SystemExit("rule needs --key (with --ruling and --reason) or --tsv.")
-    known = set(all_keys(load_candidates(args.bundle))) if args.bundle else None
+    known = set(all_keys(load_candidates(args.bundle, args.flavor))) if args.bundle else None
     rulings = load_rulings(args.rulings)
     for key, ruling, reason in todo:
         if known is not None and key not in known:
@@ -1076,7 +1151,7 @@ def cmd_rule(args) -> int:
 
 
 def cmd_check(args) -> int:
-    doc = load_candidates(args.bundle)
+    doc = load_candidates(args.bundle, args.flavor)
     unruled = unruled_keys(doc, load_rulings(args.rulings))
     if not unruled:
         print("OK: every candidate and flag in %s is ruled." % args.bundle.name)
@@ -1090,16 +1165,19 @@ def cmd_check(args) -> int:
 
 
 def cmd_report(args) -> int:
-    doc = load_candidates(args.bundle)
-    write_text(args.bundle / "RULINGS.md", format_rulings_md(doc, load_rulings(args.rulings), args.date))
+    doc = load_candidates(args.bundle, args.flavor)
+    write_text(args.bundle / "RULINGS.md",
+               format_rulings_md(doc, load_rulings(args.rulings), args.date, args.flavor))
     log("Wrote %s" % (args.bundle / "RULINGS.md"))
     return 0
 
 
 def cmd_apply(args) -> int:
-    doc = load_candidates(args.bundle)
+    flavor = args.flavor
+    doc = load_candidates(args.bundle, flavor)
     text = args.seeds.read_bytes().decode("utf-8")
-    new, changes = apply_text(text, doc, load_rulings(args.rulings), args.date)
+    new, changes = apply_text(text, doc, load_rulings(args.rulings), args.date, flavor.spec_ids(),
+                              flavor.comment)
     if new != text:
         args.seeds.write_bytes(new.encode("utf-8"))
     for line in changes:
@@ -1109,16 +1187,16 @@ def cmd_apply(args) -> int:
 
 
 def parse_args(argv):
+    """The command line. `--flavor` is accepted on every command; `--rulings` and `--seeds`
+    default to the flavor's own files (rulings_<flavor>.json, its seed file)."""
     p = argparse.ArgumentParser(description="Re-validate KickCD's cast-stopper seeds against a wago.tools build.")
-    p.add_argument("--rulings", type=Path, default=RULINGS_PATH)
-    p.add_argument("--seeds", type=Path, default=SEEDS_PATH)
+    p.add_argument("--rulings", type=Path)
+    p.add_argument("--seeds", type=Path)
     p.add_argument("--cache-dir", type=Path, default=CACHE_DIR)
     sub = p.add_subparsers(dest="command", required=True)
-    st = sub.add_parser("status", help="is the live Retail build newer than the newest bundle?")
-    st.add_argument("--flavor", choices=(CLIENT,), default=CLIENT)
+    st = sub.add_parser("status", help="is the flavor's live build newer than its newest bundle?")
     st.add_argument("--root", type=Path, default=RESEARCH)
     d = sub.add_parser("derive", help="flags and candidates into the bundle")
-    d.add_argument("--flavor", choices=(CLIENT,), default=CLIENT)
     d.add_argument("--bundle", type=Path, required=True)
     d.add_argument("--date", type=_date, required=True)
     d.add_argument("--build")
@@ -1129,12 +1207,20 @@ def parse_args(argv):
     r.add_argument("--reason")
     r.add_argument("--tsv", type=Path)
     r.add_argument("--bundle", type=Path, help="refuse keys this bundle does not carry")
+    commands = [st, d, r]
     for name in ("check", "report", "apply"):
         c = sub.add_parser(name)
         c.add_argument("--bundle", type=Path, required=True)
         if name != "check":
             c.add_argument("--date", type=_date, required=True)
-    return p.parse_args(argv)
+        commands.append(c)
+    for c in commands:
+        c.add_argument("--flavor", choices=FLAVOR_NAMES, default="retail")
+    args = p.parse_args(argv)
+    args.flavor = get_flavor(args.flavor)
+    args.rulings = args.rulings or args.flavor.rulings_path
+    args.seeds = args.seeds or args.flavor.seeds_path
+    return args
 
 
 def main(argv=None) -> int:

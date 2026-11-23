@@ -1,4 +1,4 @@
-## Interface: 120105
+## Interface: 120105, 16001
 ## Title: Ka0s KickCD
 ## Notes: Tracks interrupt + CC cooldowns on a movable icon grid.
 ## Author: add1kted2ka0s
@@ -43,6 +43,11 @@ locales\enUS.lua
 # A line in this block without a LOAD-BEARING POSITION comment is conventional:
 # free to move within the block.
 core\Compat.lua
+# LOAD-BEARING POSITION: adds the client questions and the whole-name reader (LibKa0s-Compat-1.0's,
+# with their stubs) to the NS.Compat that core\Compat.lua creates, so it follows it, and loads
+# before core\SimSetup.lua, which wraps every member at load. The one file that reads a
+# WOW_PROJECT_* constant (clients-§3).
+core\CompatClient.lua
 # LOAD-BEARING: wraps every NS.Compat member at load (LibKa0s-Sim-1.0's seam). It must load straight
 # after the Compat files and before any file that reads a Compat member.
 core\SimSetup.lua
@@ -80,6 +85,7 @@ core\SkinSetup.lua
 core\Events.lua
 core\DebugLogSetup.lua
 core\Units.lua
+core\SpellRanks.lua
 core\Database.lua
 # LOAD-BEARING POSITION: core/Database_Migrations.lua defines its migrators on
 # NS.Database, which core/Database.lua creates, at file load -- so directly after it.
@@ -114,6 +120,8 @@ core\PerfSetup.lua
 # free within the block.
 defaults\Profile.lua
 defaults\Spells.lua
+defaults\Spells_Forever.lua
+defaults\SpellRanks_Forever.lua
 
 # Modules
 # Conventional position: the four parent modules (Cooldowns, IconGrid, Castbar,
@@ -165,6 +173,10 @@ modules\SimStrip.lua
 # convention only: every module it reads it resolves at CALL time, when the
 # report runs, and core\DebugLogSetup.lua asks it for its sections the same way.
 modules\Diagnostics.lua
+# The WoW Forever port's probe verbs (MKF-KC-16): `/kcd debug probe` records client facts into
+# db.global.probe. Conventional position: NS.SimHost, NS.SpellRanks, NS.Database and NS.Sim are read
+# at call time, when the probe starts or an event reaches its private frame.
+modules\Probe.lua
 
 # Settings (last — depend on everything else being initialized)
 # LOAD-BEARING POSITION: creates NS.Settings.Schema (the rows array) and NS.Settings.Store, which both descriptors and every page file's add/AddComposed reach at load

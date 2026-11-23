@@ -196,6 +196,30 @@ local function isEmpty(t)
     return next(t) == nil
 end
 
+-- ── the running client's seed (the WoW Forever port, MKF-KC-11; clients-§5) ─────────────────
+--
+-- One seed per client, picked by Compat.ClientKey() at call time: WoW Forever's lists and racials
+-- (defaults/Spells_Forever.lua) there, defaults/Spells.lua's everywhere else, exactly as before.
+
+local function onForever()
+    local Compat = NS.Compat
+    return Compat ~= nil and Compat.ClientKey ~= nil and Compat.ClientKey() == "forever"
+end
+
+--- The running client's default lists, `[CLASS][specID] = { entries }`, or nil before they load.
+--- @return table|nil
+function Database.DefaultSpells()
+    if onForever() then return NS.DefaultSpellsForever end
+    return NS.DefaultSpells
+end
+
+--- The running client's racial cast-stoppers, `[raceFile] = spellID`, or nil.
+--- @return table|nil
+function Database.RaceCastStoppers()
+    if onForever() then return NS.RaceCastStoppersForever end
+    return NS.RaceCastStoppers
+end
+
 -- THE SEED ROUTINE, shared by the load pass (BuildSpells), the every-list
 -- reset (ResetAllSpells, through BuildSpells) and the one-list reset
 -- (ResetSpellList). architecture-§5 lets a registry reset call the seed routine
@@ -225,7 +249,7 @@ end
 -- The player's racial cast-stopper and class file token, or nil when their
 -- race has none.
 local function playerRacial()
-    local racials = NS.RaceCastStoppers
+    local racials = Database.RaceCastStoppers()
     if type(racials) ~= "table" then return nil end
     local _, race = UnitRace("player")
     local _, classFile = UnitClass("player")
@@ -264,11 +288,16 @@ end
 ---                                        spec untouched.
 --- The settings panel's per-spec "Defaults" button (KICKCD_RESET_SPELLS
 --- popup) maps to the second form.
+---
+--- WOW FOREVER seeds by ABSENT KEY instead (seedAbsent below): a profile an out-of-date run left
+--- holding only Retail pairs would otherwise never get a Forever list.
 function Database:BuildSpells()
     if not (self.db and self.db.profile) then return end
 
     local profile = self.db.profile
     profile.spells = profile.spells or {}
+
+    if onForever() then return self:_SeedAbsent() end
 
     -- Only seed if the profile has never been populated. Once the user
     -- has any class entry, we leave their data alone — including for
@@ -304,8 +333,34 @@ function Database:BuildSpells()
     end
 end
 
+--- WoW Forever's seed (MKF-KC-11, lead call D9): for each Forever class + spec pair the profile does
+--- NOT hold, seed it from defaults/Spells_Forever.lua and append the player's racial to the player's
+--- own class. A pair the profile holds, even an emptied one, keeps its key and is never re-seeded,
+--- so intent survives with no marker; a Retail pair from an out-of-date run is left in place
+--- (Forever never reads it) and never deleted.
+function Database:_SeedAbsent()
+    local source = Database.DefaultSpells()
+    if type(source) ~= "table" then return end
+    local spells = self.db.profile.spells
+    local racialID, classFile = playerRacial()
+    for class, specs in pairs(source) do
+        for spec, list in pairs(specs) do
+            local byClass = spells[class]
+            if not (type(byClass) == "table" and byClass[spec] ~= nil) then
+                local target = self:EnsureSpellList(class, spec)
+                seedList(target, list)
+                if racialID and class == classFile then appendRacial(target, racialID) end
+            end
+        end
+    end
+end
+
 --- Wipe the active profile's spells and re-seed from KickCD.DefaultSpells +
 --- racial through BuildSpells, the seed routine the load pass also runs.
+--- The same on both clients (MKF-KC-11): the player asked for every list
+--- back, so a leftover Retail pair on WoW Forever goes too, and the empty
+--- profile then takes the running client's whole seed. Only the automatic
+--- load pass keeps what a profile holds.
 --- Backs `/kcd spells resetall` (core/KickCD.lua), so the player gets the
 --- current addon defaults across every class and spec, not just the one
 --- selected in the Spells editor. The General > "Reset all settings"
@@ -352,20 +407,31 @@ end
 --- The list a reset would give (class, spec), built into a scratch table.
 local function defaultListFor(class, spec, racialID, racialClass)
     local list = {}
-    local byClass = NS.DefaultSpells and NS.DefaultSpells[class]
+    local source = Database.DefaultSpells()
+    local byClass = source and source[class]
     seedList(list, byClass and byClass[spec])
     if racialID and racialClass == class then appendRacial(list, racialID) end
     return list
 end
 
---- Every (class, spec) pair the profile or the defaults name, once each.
+--- Is (class, spec) one of the running client's pairs? On WoW Forever only the Forever defaults'
+--- pairs are (a stray Retail pair is neither stored nor customized there, MKF-KC-11); on Retail
+--- every pair is, as before.
+local function clientPair(class, spec)
+    if not onForever() then return true end
+    local source = Database.DefaultSpells()
+    local byClass = type(source) == "table" and source[class]
+    return type(byClass) == "table" and byClass[spec] ~= nil
+end
+
+--- Every (class, spec) pair the profile or the running client's defaults name, once each.
 local function everyPair(stored)
     local seen, out = {}, {}
-    for _, source in ipairs({ stored, NS.DefaultSpells or {} }) do
+    for _, source in ipairs({ stored, Database.DefaultSpells() or {} }) do
         for class, specs in pairs(source) do
             for spec in pairs(type(specs) == "table" and specs or {}) do
                 local key = tostring(class) .. "/" .. tostring(spec)
-                if not seen[key] then
+                if not seen[key] and clientPair(class, spec) then
                     seen[key] = true
                     out[#out + 1] = { class, spec }
                 end
@@ -446,15 +512,32 @@ local function findEntry(list, spellID)
     end
 end
 
+--- The row a player TYPED an id for: the exact id first, else its rank family's (KC-REV-3). On WoW
+--- Forever AddSpell stores any rank as its family and the player sees the resolved rank, so
+--- `/kcd spells disable 6554` names the 6552 row; on Retail Family is identity and this is
+--- findEntry.
+local function findTyped(list, spellID)
+    local e, i = findEntry(list, spellID)
+    if e or not (NS.SpellRanks and spellID) then return e, i end
+    local family = NS.SpellRanks.Family(spellID)
+    if family == spellID then return nil end
+    return findEntry(list, family)
+end
+
 --- Is `class` a class file token this addon can key a list by? A key of the
 --- shipped defaults, or a token the client's own class list reports. Anything
 --- else ("WARLORD", a typo) would lazy-create an orphan list in SavedVariables
 --- that no character ever reads (KICKCD-R-18).
 -- @param class string|nil
 -- @return boolean
+---
+--- On WoW Forever the running client's defaults alone decide (MKF-KC-13): the nine Forever classes,
+--- so a Retail-only token (DEATHKNIGHT) is unknown there.
 function Database.IsKnownClass(class)
     if type(class) ~= "string" or class == "" then return false end
-    if NS.DefaultSpells and NS.DefaultSpells[class] then return true end
+    local source = Database.DefaultSpells()
+    if source and source[class] then return true end
+    if onForever() then return false end
     if not (_G.GetNumClasses and _G.GetClassInfo) then return false end
     for classID = 1, _G.GetNumClasses() do
         local _, classFile = _G.GetClassInfo(classID)
@@ -467,6 +550,10 @@ end
 --- the list is the render order, and a second entry for one spellID would give
 --- the icon grid two buttons for one cooldown. Lazy-creates the list -- but only
 --- for a class Database.IsKnownClass accepts.
+---
+--- Any rank is stored as its FAMILY (core/SpellRanks.lua, MKF-KC-09): on WoW Forever a typed Pummel
+--- rank 2 (6554) stores 6552 and re-enables the row already there; on Retail the id is stored as
+--- given.
 -- @return "added" | "enabled"; or nil when there is nowhere to write, plus
 --   "unknown class" when the class token is the reason
 function Database:AddSpell(class, spec, spellID)
@@ -474,6 +561,7 @@ function Database:AddSpell(class, spec, spellID)
         refused("add", class, spec, "no spellID", spellID)
         return nil
     end
+    if NS.SpellRanks then spellID = NS.SpellRanks.Family(spellID) end
     if class ~= nil and not Database.IsKnownClass(class) then
         refused("add", class, spec, "unknown class", spellID)
         return nil, "unknown class"
@@ -502,7 +590,7 @@ end
 -- @return true if an entry was removed
 function Database:RemoveSpell(class, spec, spellID)
     local list = self:GetSpellList(class, spec)
-    local _, index = findEntry(list, spellID)
+    local _, index = findTyped(list, spellID)
     if not index then
         refused("remove", class, spec, list and "not in the list" or NO_LIST, spellID)
         return false
@@ -555,7 +643,7 @@ end
 -- @return true if the entry exists
 function Database:SetSpellEnabled(class, spec, spellID, enabled)
     local list = self:GetSpellList(class, spec)
-    local entry = findEntry(list, spellID)
+    local entry = findTyped(list, spellID)
     if not entry then
         refused(enabled and "enable" or "disable", class, spec, list and "not in the list" or NO_LIST, spellID)
         return false
@@ -572,7 +660,7 @@ end
 -- @return true if the entry exists
 function Database:SetSpellCategory(class, spec, spellID, category)
     local list = self:GetSpellList(class, spec)
-    local entry = findEntry(list, spellID)
+    local entry = findTyped(list, spellID)
     if not entry then
         refused("category", class, spec, list and "not in the list" or NO_LIST, spellID)
         return false
@@ -599,7 +687,8 @@ function Database:ResetSpellList(class, spec)
         end
         return nil
     end
-    local byClass = NS.DefaultSpells and NS.DefaultSpells[class]
+    local source = Database.DefaultSpells()
+    local byClass = source and source[class]
     seedList(list, byClass and byClass[spec])
     local racialID, classFile = playerRacial()
     if racialID and classFile == class then appendRacial(list, racialID) end

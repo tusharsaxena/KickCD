@@ -114,8 +114,8 @@ test("a spell the player cannot currently cast is not rendered", function()
     -- The choice-node case: both siblings ship in the defaults, only the
     -- picked one may appear.
     local gi, IconGrid, _, mocks = withList({ entry(108199), entry(1263569) })
-    mocks.IsPlayerSpell = function(id) return id == 108199 end
-    mocks.IsSpellKnown = function() return false end
+    mocks.C_SpellBook = { IsSpellKnown = function(id) return id == 108199 end,
+                          IsSpellInSpellBook = function() return false end }
     IconGrid:BuildActiveList(gi)
     local ids = idsOf(gi)
     assertEqual(#ids, 1)
@@ -137,12 +137,13 @@ end)
 test("a pet spell appears only while its pet is out", function()
     -- Counter Shot / Spell Lock come and go with the pet; the grid follows.
     local gi, IconGrid, _, mocks = withList({ entry(147362) })
-    mocks.IsPlayerSpell = function() return false end
-    mocks.IsSpellKnown = function() return false end
+    -- The pet's bank is Enum.SpellBookSpellBank.Pet, 1.
+    mocks.C_SpellBook = { IsSpellKnown = function() return false end,
+                          IsSpellInSpellBook = function() return false end }
     IconGrid:BuildActiveList(gi)
     assertEqual(#gi.ordered, 0)
 
-    mocks.IsSpellKnown = function(_, pet) return pet == true end
+    mocks.C_SpellBook.IsSpellInSpellBook = function(_, bank) return bank == 1 end
     IconGrid:BuildActiveList(gi)
     assertEqual(#gi.ordered, 1)
 end)
@@ -321,7 +322,10 @@ test("an icon rebuilt after Cooldowns already emitted keeps its cooldown", funct
     -- red under: seedIcon painting every rebuilt icon ready regardless of
     -- what Cooldowns already knows.
     local gi, IconGrid, NS, mocks = withList({ entry(1766) })
-    mocks.spellCooldowns[1766] = { isEnabled = true, isActive = true, startTime = 100, duration = 15 }
+    -- On the resolved id (core/SpellRanks.lua): under the kit's forever profile the mock knows every
+    -- rank, so Kick resolves to its rank 4; on Retail it is 1766 itself.
+    mocks.spellCooldowns[NS.SpellRanks.Resolve(1766)] =
+        { isEnabled = true, isActive = true, startTime = 100, duration = 15 }
     local Cooldowns = NS:GetModule("Cooldowns")
     Cooldowns:Rebuild()               -- the losing order: Cooldowns first
     assertEqual(Cooldowns:StateFor(1766) and Cooldowns:StateFor(1766).ready, false,

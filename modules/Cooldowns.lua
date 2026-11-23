@@ -68,6 +68,10 @@ local Cooldowns = NS:NewModule("Cooldowns", "AceEvent-3.0")
 -- file load, never through an NS lookup on the hot path. core/PerfSetup.lua
 -- loads before modules/, so this is always the real instance or its stub.
 local Perf = NS.Perf
+-- The one rank resolver (core/SpellRanks.lua, MKF-KC-09): a row keeps its stored id as its key here
+-- and in every payload, and the client is asked about the id Resolve answers (identity on Retail,
+-- the highest known rank on WoW Forever). core/ loads before modules/.
+local Ranks = NS.SpellRanks
 
 -- Blizzard's global-cooldown spell. Queried for one thing only: its plain-bool active flag, which
 -- is the sole value in this module's reach that distinguishes a GCD from a real cooldown without
@@ -103,6 +107,8 @@ end
 local function isPollable(spellID)
     -- Reject obviously-bad IDs early.
     if not spellID or type(spellID) ~= "number" then return false end
+    local stored = spellID
+    spellID = Ranks.Resolve(spellID)
 
     -- A spell that doesn't return GetSpellInfo at all is definitely not in
     -- the player's spellbook (or the ID is wrong).
@@ -114,8 +120,9 @@ local function isPollable(spellID)
     -- "can the player actually cast this right now" check — needed to hide
     -- the unpicked branch of a talent choice node (e.g. Blood DK's
     -- Gorefiend's Grasp ↔ Abomination Limb) and pet spells whose pet isn't
-    -- currently summoned.
-    return NS.Compat.IsSpellAvailable(spellID)
+    -- currently summoned. Asked of the stored row through the resolver: on WoW Forever the
+    -- base rank the spellbook holds, never a form's override (MKF-KC-10).
+    return Ranks.IsAvailable(stored)
 end
 
 --- Charges may come back secret on guarded spells. If so, conservatively
@@ -154,20 +161,24 @@ end
 -- @return DurationObject|nil  nil once the spell has no charges or is on its
 --   spell-level cooldown (the full-cooldown branch owns it then)
 function Cooldowns.RechargeHandle(spellID)
+    spellID = Ranks.Resolve(spellID)
     local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(spellID)
     return rechargeHandle(spellID, NS.Compat.GetSpellCharges(spellID), isActive)
 end
 
---- The state record for a spell that passed isPollable.
+--- The state record for a spell that passed isPollable. `spellID` is the stored row's id, which the
+--- record carries; `live` is the id the client is asked about. `usable` is the resolver's: on WoW
+--- Forever a family is usable when any known rank is (critic C3).
 local function buildSpellState(spellID)
+    local live = Ranks.Resolve(spellID)
     -- Plain-bool active flag from the legacy API. We deliberately discard
     -- start/duration here — they're secret in combat and the duration
     -- object covers every legitimate downstream use.
-    local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(spellID)
-    local usable    = NS.Compat.IsSpellUsable(spellID)
+    local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(live)
+    local usable    = Ranks.IsUsable(spellID)
     -- Only the current-charge count is needed; the max is discarded (it is
     -- equally secret-prone and nothing downstream compares against it).
-    local cur = NS.Compat.GetSpellCharges(spellID)
+    local cur = NS.Compat.GetSpellCharges(live)
 
     -- Secret-aware cooldown handle. We never call :GetRemainingDuration()
     -- on it from Lua; the IconGrid passes it through to
@@ -175,7 +186,7 @@ local function buildSpellState(spellID)
     -- FontString:SetFormattedText (text), and
     -- cdObj:EvaluateTotalDuration(curve) (GCD-vs-real-CD visual filter)
     -- — all of which accept secret values via C-side argument paths.
-    local cdObject = isActive and NS.Compat.GetSpellCooldownDuration(spellID) or nil
+    local cdObject = isActive and NS.Compat.GetSpellCooldownDuration(live) or nil
 
     -- `ready` is the canonical "this spell can be cast right now" boolean.
     -- It's used for the spec-locked-spells filter and for downstream UI
@@ -190,7 +201,7 @@ local function buildSpellState(spellID)
         ready          = ready,
         isActive       = isActive == true,
         cdObject       = cdObject,
-        chargeCdObject = rechargeHandle(spellID, cur, isActive),
+        chargeCdObject = rechargeHandle(live, cur, isActive),
         charges        = cur,
     }
 end
@@ -321,6 +332,10 @@ function Cooldowns:Rebuild()
     -- (the harness, a slash path) do not pass the latch, and this return is
     -- what keeps them from building a watched-list for a disabled addon.
     if not isEnabled() then return end
+
+    -- Every rebuild reads the known ranks afresh: it runs on the spellbook, talent, spec and login
+    -- events, the edges a rank is learned on. Refresh and the ticker then read the cache.
+    Ranks.Invalidate()
 
     local class, spec, classID = ResolveClassSpec()
     if not class or not spec then
@@ -608,12 +623,19 @@ local LIFECYCLE_EVENTS = {
     { "TRAIT_CONFIG_UPDATED",          "Rebuild" },
 }
 
+-- WoW Forever's own rows, registered only there (clients-§4, by declaration): a form change swaps
+-- Feral Charge's spell (core/SpellRanks.lua, MKF-KC-10, critic C4), so the watched set re-resolves.
+local FOREVER_EVENTS = {
+    { "UPDATE_SHAPESHIFT_FORM",        "Rebuild" },
+}
+
 --- The module's GAME-event registrations, split out of OnEnable so a perf
 --- Resume can re-arm the same set without re-running the rest of the enable path
 --- (rebuilding the watched table, re-subscribing to messages it never dropped).
 --- Idempotent: AceEvent keys on (event, target).
 function Cooldowns:RegisterLifecycleEvents()
     NS.RegisterEventList(self, LIFECYCLE_EVENTS)
+    if NS.Compat.ForClient({ "forever" }) then NS.RegisterEventList(self, FOREVER_EVENTS) end
 end
 
 --- ONE WAY UP, and OnEnable is not it — Resume is (slash-commands-§7).
@@ -768,7 +790,7 @@ function Cooldowns:DebugDump(emit)
     local safeStr = NS.SafeToString
     for _, id in ipairs(ids) do
         local s = self.watched[id]
-        local name = NS.Compat.GetSpellInfo(id) or "?"
+        local name = NS.Compat.GetSpellInfo(Ranks.Resolve(id)) or "?"
         -- We deliberately don't print remaining time — :GetRemainingDuration()
         -- is secret in combat and even tostring would error in tainted scope.
         p(("  [%d] %s ready=%s active=%s cdObj=%s chargeCdObj=%s charges=%s"):format(

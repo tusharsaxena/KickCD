@@ -217,3 +217,20 @@ test("DeliverEvent: an unreadable AceEvent registry answers 0 and says so once",
     assertEqual(a, 0); assertEqual(b, 0)
     assertEqual(lines, 1, "the fallback line is written once")
 end)
+
+test("each module's RegisterLifecycleEvents sits directly under its own doc block (KC-REV-6)", function()
+    for _, mod in ipairs({ "IconGrid", "Cooldowns" }) do
+        local fh = assert(io.open(T.root .. "/modules/" .. mod .. ".lua", "rb"))
+        local src = fh:read("*a")
+        fh:close()
+        local prev
+        for line in src:gmatch("([^\n]*)\n") do
+            line = line:gsub("\r$", "")
+            if line == "function " .. mod .. ":RegisterLifecycleEvents()" then
+                assertTrue(prev and prev:match("^%-%-%-") ~= nil,
+                    mod .. ": the line above RegisterLifecycleEvents is its doc block, got: " .. tostring(prev))
+            end
+            prev = line
+        end
+    end
+end)

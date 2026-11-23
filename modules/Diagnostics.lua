@@ -135,13 +135,18 @@ end
 -- ── spells ───────────────────────────────────────────────────────────────────────────────────
 
 --- One list entry: `id name` plus `off` for a disabled row and `unlearned` for a spell the
---- player does not know.
+--- player does not know. Asked about the resolved id (core/SpellRanks.lua, MKF-KC-09); when that is
+--- another rank than the stored one (WoW Forever), `rank <id>` names it.
 local function entryText(e)
     local Compat = NS.Compat or {}
     local id = e.spellID
-    local text = tostring(id) .. " " .. NS.SafeToString(Compat.GetSpellInfo and Compat.GetSpellInfo(id) or "?")
+    local live = NS.SpellRanks and NS.SpellRanks.Resolve(id) or id
+    local text = tostring(id) .. " " .. NS.SafeToString(Compat.GetSpellInfo and Compat.GetSpellInfo(live) or "?")
+    if live ~= id then text = text .. " rank " .. tostring(live) end
     if e.enabled == false then text = text .. " off" end
-    if Compat.IsSpellAvailable and not Compat.IsSpellAvailable(id) then text = text .. " unlearned" end
+    local known = NS.SpellRanks and NS.SpellRanks.IsAvailable(id)
+    if known == nil and Compat.IsSpellAvailable then known = Compat.IsSpellAvailable(id) end
+    if known == false then text = text .. " unlearned" end
     return text
 end
 
@@ -274,8 +279,15 @@ end
 
 --- The section list the console descriptor hands the library, in report order. Built on each
 --- call so a test (or a later module) sees the live functions.
+--- `cmcache` is Retail-only, as the Cooldown Manager gate it reports on is (MKF-KC-12): on WoW
+--- Forever the section is absent, never an "unavailable" line.
+--- The row is left out BY NAME as the list is built (KC-REV-5), so reordering the list can never
+--- drop a different section on Forever.
 function X.Sections()
-    return {
+    local retailOnly = { cmcache = true }
+    local onRetail = NS.Compat.ForClient({ "retail" })
+    local out = {}
+    for _, row in ipairs({
         { "state",     X.State },
         { "settings",  X.Settings },
         { "units",     X.Units },
@@ -289,5 +301,8 @@ function X.Sections()
         { "events",    X.Events },
         { "perf",      X.Perf },
         { "sim",       X.Sim },
-    }
+    }) do
+        if onRetail or not retailOnly[row[1]] then out[#out + 1] = row end
+    end
+    return out
 end

@@ -281,8 +281,9 @@ end)
 
 test("an empower start re-evaluates target_casting visibility", function()
     -- The grid's cast-state refresh rides the unit's cast events; without the
-    -- EMPOWER family an Evoker's empowered cast never shows the grid.
-    local fresh = T.load(true, true)
+    -- EMPOWER family an Evoker's empowered cast never shows the grid. Retail's routes alone
+    -- (MKF-KC-15; tests/test_sim_clients.lua asserts their absence on WoW Forever).
+    local fresh = T.load(true, true, T.retailClient)
     local m, p = fresh.mocks, fresh.NS.db.profile
     p.enabled, p.visibility, p.locked = true, "target_casting", true
     m.UnitExists = function() return false end
