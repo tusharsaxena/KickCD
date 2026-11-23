@@ -512,6 +512,22 @@ end
 
 local CAST_FAMILY = "UNIT_SPELLCAST_"
 
+--- Grow a caller's file-scope route map, in place, by `extra`'s routes when the `clients`
+--- declaration (Compat.ForClient's, clients-§4) names the running client; answers `routes`. Called
+--- once at file load, so the filter's fixed set already holds a client's own routes, and a route
+--- of a feature the client lacks is never registered (an Evoker's empowered cast on WoW Forever,
+--- the Forever port's critic L2).
+--- @param routes table   { [UNIT_SPELLCAST_* event] = method name }
+--- @param extra table    the client-specific routes, same shape
+--- @param clients any    a ForClient declaration, e.g. { "retail" }
+--- @return table routes
+function Util.AddClientRoutes(routes, extra, clients)
+    if NS.Compat.ForClient(clients) then
+        for ev, name in pairs(extra) do routes[ev] = name end
+    end
+    return routes
+end
+
 --- Build the one cast-filter frame for (module, unit).
 --- @param module table  — AceEvent module (handler methods live on it)
 --- @param unit string   — "target" / "focus"

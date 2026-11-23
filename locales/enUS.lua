@@ -86,6 +86,8 @@ L["Enable the Target or the Focus grid first: the simulation plays on them."] =
     "Enable the Target or the Focus grid first: the simulation plays on them."
 L["Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."] =
     "Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."
+L["Your class tracks no spell you can use: add one with /kcd spells add, then start again."] =
+    "Your class tracks no spell you can use: add one with /kcd spells add, then start again."
 L["This client cannot build simulated cooldowns, so the simulator cannot run."] =
     "This client cannot build simulated cooldowns, so the simulator cannot run."
 L["Simulation started (%s): nothing is cast, nothing is saved, and your settings are not touched."] =
@@ -232,6 +234,8 @@ L["Hollow King"] =
     "Hollow King"
 L["Mythic+ pull, several kickers"] =
     "Mythic+ pull, several kickers"
+L["Dungeon pull, several kickers"] =
+    "Dungeon pull, several kickers"
 L["Boss kick rotation"] =
     "Boss kick rotation"
 L["Kick on cooldown, uninterruptible cast"] =

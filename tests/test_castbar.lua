@@ -55,8 +55,9 @@ end
 test("UNIT_SPELLCAST_EMPOWER_START on target starts the bar and EMPOWER_STOP stops it", function()
     -- An Evoker's empowered cast reports through UnitChannelInfo and fires the
     -- EMPOWER family, not CHANNEL_START; an unregistered EMPOWER_START leaves
-    -- the bar blank for a cast begun after targeting.
-    local inst = T.load(true, true)
+    -- the bar blank for a cast begun after targeting. Retail's routes alone (MKF-KC-15: WoW
+    -- Forever has no Evoker, tests/test_sim_clients.lua), so the case loads the Retail client.
+    local inst = T.load(true, true, T.retailClient)
     local mocks, CB = inst.mocks, inst.NS:GetModule("Castbar")
     local p = inst.NS.db.profile
     p.locked, p.visibility, p.enabled = true, "always", true

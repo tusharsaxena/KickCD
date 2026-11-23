@@ -250,6 +250,7 @@ local SUITES = {
     "test_sim_interference",
     "test_sim_drivers",
     "test_sim_e2e",
+    "test_sim_clients",
     "test_sim_marker",
     "test_sim_checkbox",
     "test_debuglog",
@@ -489,8 +490,17 @@ local FOREVER = shared.mocks.WOW_PROJECT_CAMELOT ~= nil
 local RETAIL_ONLY = FOREVER and "Retail-only feature (the WoW Forever port, R8): the Cooldown Manager gate "
     .. "is absent on WoW Forever, which tests/test_admission_clients.lua asserts" or nil
 
+-- Retail's project constants on a mock set, whatever KA0S_KIT_CLIENT says: a case of a Retail-only
+-- behavior (the empowered cast's routes, the Retail story of the simulator; MKF-KC-15) calls it from
+-- its mutate hook, so it runs, and passes, on both kit profiles.
+local function retailClient(mocks)
+    Loader.makeEnv(mocks)
+    Loader.MockClient.apply(mocks, "retail")
+end
+
 _G.KICKCD_TEST = Kit.expose{
     RETAIL_ONLY = RETAIL_ONLY,
+    retailClient = retailClient,
     root = root,
     -- shared instance
     NS = shared.NS,

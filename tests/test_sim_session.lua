@@ -214,7 +214,8 @@ end)
 -- ── 2. a good start ─────────────────────────────────────────────────────────
 
 test("Sim start: STARTED, the engine rebuilt on the world, the spells resolved, the panel asked, ready", function()
-    local env = ready()
+    -- Retail's off-GCD rule, so the Retail client (MKF-KC-15; WoW Forever's is tests/test_sim_clients.lua's).
+    local env = ready(nil, { client = "retail" })
     local NS = env.NS
     local Cooldowns = NS:GetModule("Cooldowns")
     local rebuilds, realRebuild = 0, Cooldowns.Rebuild

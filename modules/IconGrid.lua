@@ -88,8 +88,11 @@ local instances = {}   -- [unit] = instance
 -- The cast filter's FIXED event set, every one refreshing the unit's
 -- "*_casting" visibility and glow. FILE SCOPE so an enable allocates nothing
 -- (anti-patterns #43). EMPOWER_* is an Evoker's empowered cast, which reads as a
--- channel but fires its own start/update/stop instead of CHANNEL_*.
-local ICON_CAST_ROUTES = {
+-- channel but fires its own start/update/stop instead of CHANNEL_*. It is
+-- Retail's alone, so its three routes join by declaration on Retail and are never
+-- registered on WoW Forever, which has no Evoker (clients-§4; the Forever port's
+-- critic L2, MKF-KC-15).
+local ICON_CAST_ROUTES = NS.Util.AddClientRoutes({
     UNIT_SPELLCAST_START             = "OnUnitCastEvent",
     UNIT_SPELLCAST_STOP              = "OnUnitCastEvent",
     UNIT_SPELLCAST_FAILED            = "OnUnitCastEvent",
@@ -98,10 +101,11 @@ local ICON_CAST_ROUTES = {
     UNIT_SPELLCAST_CHANNEL_STOP      = "OnUnitCastEvent",
     UNIT_SPELLCAST_INTERRUPTIBLE     = "OnUnitCastEvent",
     UNIT_SPELLCAST_NOT_INTERRUPTIBLE = "OnUnitCastEvent",
+}, {
     UNIT_SPELLCAST_EMPOWER_START     = "OnUnitCastEvent",
     UNIT_SPELLCAST_EMPOWER_UPDATE    = "OnUnitCastEvent",
     UNIT_SPELLCAST_EMPOWER_STOP      = "OnUnitCastEvent",
-}
+}, { "retail" })
 
 local function newInstance(unit)
     return {

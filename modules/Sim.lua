@@ -167,6 +167,11 @@ local CHECKS = {
     end,
     function()
         if not Host.ResolveSpells() then
+            -- WoW Forever keys a list by class (one spec per class, MKF-KC-13), so it speaks of one.
+            if NS.Util.OneSpecPerClass() then
+                return L["Your class tracks no spell you can use: add one with /kcd spells add, then start again."],
+                    "no spell"
+            end
             return L["Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."],
                 "no spell"
         end
@@ -235,6 +240,25 @@ function Host.ArmWatch()
     for event in pairs(Host.WATCH) do NS.SafeRegisterEvent(Host.watch, event, onWatch, rejected) end
 end
 
+-- ── the off-GCD rule (the WoW Forever port, MKF-KC-15) ───────────────────────────────────────
+--
+-- Retail's kicks are off the global cooldown, so the prepare marks "your kick" off it and a CC's GCD
+-- never shows on it. On WoW Forever most kicks carry the 1.5 s (Kick 1.0 s) GCD of start-recovery
+-- category 133 (DB2 1.60.1.71037, the research's factcheck 23 and 45): only Counterspell and the
+-- bear Feral Charge are off it, the stored 1238122 and its bear override 16979 (the cat leap 414924
+-- has the GCD). Declared per client (clients-§4), never read from the client.
+Host.OFF_GCD_FOREVER = { [2139] = true, [1238122] = true, [16979] = true }
+
+--- Whether the simulated world keeps the GCD off "your kick" `id`: every kick on Retail; on WoW
+--- Forever only the ids Host.OFF_GCD_FOREVER names. False for no id.
+--- @param id number|nil
+--- @return boolean
+function Host.KickOffGcd(id)
+    if type(id) ~= "number" then return false end
+    if NS.Compat.ForClient({ "retail" }) then return true end
+    return Host.OFF_GCD_FOREVER[id] == true
+end
+
 -- ── the start and the steps ──────────────────────────────────────────────────────────────────
 
 --- The descriptor's prepare: the world, the two spells, the engine re-polled through the seam, the
@@ -242,7 +266,7 @@ end
 function Host.Prepare(_, _, _, ready)
     Host.world = NS.SimWorld.Build()
     Host.kick, Host.cc = Host.ResolveSpells()
-    NS.SimWorld.MarkOffGcd(Host.kick)
+    if Host.KickOffGcd(Host.kick) then NS.SimWorld.MarkOffGcd(Host.kick) end
     -- The watched set re-polls through the seam, so every icon answers from the world: ready.
     local Cooldowns = module("Cooldowns")
     if Cooldowns then Cooldowns:Rebuild() end
