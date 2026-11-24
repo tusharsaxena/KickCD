@@ -69,15 +69,19 @@ test("Sim (Forever): a party member is named whole, First Surname (forever-quirk
     assertEqual(P.mockshield.name, "Mockshield Sampleforge")
 end)
 
-test("Sim (Forever): without LibKa0s the party is the same copy of the library's rows", function()
-    local live = forever().NS.SimScenario.PARTY
+test("Sim (Forever): without LibKa0s the party is empty (no copy of the library's rows)", function()
+    -- red under: a fallback copy kept in modules/SimScenario.lua (FB2-KC-01, LibKa0s#104)
     local P = forever(nil, nil, false, { libFiles = {} }).NS.SimScenario.PARTY
-    for _, key in ipairs({ "mockflame", "mockshield" }) do
-        for _, field in ipairs({ "name", "class", "spec", "spell" }) do
-            assertEqual(P[key][field], live[key][field], key .. "." .. field)
-        end
+    assertNil(next(P), "the library-absent load still names a party")
+end)
+
+test("Sim (Forever): the story's kickers are the Mage and the Warrior, picked by class", function()
+    local NS = forever().NS
+    local P, seen = NS.SimScenario.PARTY, {}
+    for _, s in ipairs(NS.SimHost.SCENARIOS.defs.pull.timeline()) do
+        if s.kind == "PartyKick" then seen[P[s.member].class] = true end
     end
-    assertNil(P.samplehunter, "no Hunter kick on WoW Forever")
+    assertTrue(seen.MAGE and seen.WARRIOR, "the pull's party kicks are not the Mage's and the Warrior's")
 end)
 
 test("Sim (Retail): the party stays the four Retail kickers, by first name", function()

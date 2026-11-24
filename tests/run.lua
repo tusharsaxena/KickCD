@@ -256,6 +256,7 @@ local SUITES = {
     "test_sim_marker",
     "test_sim_checkbox",
     "test_sim_start_panel",
+    "test_sample_names",
     "test_debuglog",
     "test_debuglogsetup",
     "test_diagnostics",

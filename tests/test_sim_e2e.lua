@@ -181,8 +181,9 @@ end)
 -- ── the party is the collection's sample characters (AD-87-KC, LibKa0s#87) ──────────────────
 --
 -- preview-mode, *Sample characters*: a simulator's made-up people follow the naming convention
--- (Sample/Mock names, never localized) and are read from LibKa0s-Sim-1.0's Sim.Sample(client), with
--- a copy of the library's rows as the fallback when the library is absent.
+-- (Sample/Mock names, never localized) and are read from LibKa0s-Sim-1.0's Sim.Sample(client), and
+-- only from there: no copy of the library's rows (FB2-KC-01, LibKa0s#104), so the party is empty
+-- when the library is absent, as the sim itself is refused then.
 
 local PARTY_KEYS = { "samplehunter", "sampleblade", "mockflame", "mockshield" }
 
@@ -213,17 +214,12 @@ test("SimScenario: each party member is a library sample character, its name nev
     assertEqual(n, #PARTY_KEYS)
 end)
 
-test("SimScenario: without LibKa0s the party is a copy of the library's rows", function()
-    -- red under: a fallback that drifts from Sim.SAMPLE, or none (the party empty on that load)
-    local live = fresh().NS.SimScenario.PARTY
+test("SimScenario: without LibKa0s the party is empty, and the load raises nothing", function()
+    -- red under: a fallback copy of the library's rows kept in modules/SimScenario.lua (LibKa0s#104,
+    -- decision D1: every named sample person comes from the library)
     local inst = T.load(true, true, T.retailClient, { libFiles = {} })
-    local P = inst.NS.SimScenario.PARTY
-    for _, key in ipairs(PARTY_KEYS) do
-        assertTrue(P[key] ~= nil, key .. " missing on the library-absent load")
-        for _, field in ipairs({ "name", "class", "specID", "spec", "spell" }) do
-            assertEqual(P[key][field], live[key][field], key .. "." .. field)
-        end
-    end
+    assertTrue(inst.NS.SimScenario ~= nil, "modules/SimScenario.lua did not load without the library")
+    assertNil(next(inst.NS.SimScenario.PARTY), "the library-absent load still names a party")
 end)
 
 test("TOC: modules/SimScenario.lua loads straight after modules/Sim.lua, under a LOAD-BEARING comment", function()
