@@ -32,7 +32,7 @@ check in the WoW Forever theme names its client (`Client: Retail.`, `Client: WoW
 | FOCUS-1 – 19 | Focus tracking | both | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 17 | Text label | both | Every label control, visibility follow, the drag strip clearing the label, rapid changes, the class color in the preview and after a target or focus swap |
 | SPELLS-1 – 24 | Spell lists | both | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected, WoW Forever's default lists, its ranks as one row, Feral Charge's forms an existing Forever profile's seed, the Forever add gate and the Forever Spells page and words |
-| SIM-1 – 20 | Simulator | both | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
+| SIM-1 – 22 | Simulator | both | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs, every start path showing the step panel, the party read from the library alone |
 | DIAG-1 – 49 | Debug and diagnostics | both | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
 | DEGRADED-1 – 17 | Library-absent install | both | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
 | SKIN-1 – 50 | Skins | both | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye, the Font shadow row following its skin box, the charges badge's shadow |
@@ -1228,6 +1228,23 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   `/kcd sim start boss` → Mockshield's kick is Pummel; `/kcd sim start leave` → `Mockshield
   (Protection) leaves the party.` Fail: a lore name, a spec in English on a non-English client, or a
   member with no spell name. Result: pending
+- **SIM-21. Every start shows the step panel, pinned (FB2-KC-01, LibKa0s v1.113.0).** `/kcd lock`, then
+  close the step panel if it is open. `/kcd sim start pull` → the step panel opens beside the grid
+  with no close mark, and **Escape** leaves it up. `/kcd sim stop`, close the idle panel with its close
+  mark, `/kcd sim start boss` → it opens again. `/kcd sim panel` mid-run hides it, and
+  `/kcd sim restart` → it shows again. `/kcd sim stop`, then start a scenario from the panel's own **Start**,
+  from General → Master controls → **Sim mode** then **Start**, and from the minimap button's
+  right-click **Sim mode** then **Start** → each time the panel is up for the run, with no close mark.
+  `/kcd unlock`, `/kcd sim start pull` → refused, and no panel opens. Fail: any start that plays with
+  the panel closed, a running panel with a close mark, or a panel that flickers open twice.
+  Result:
+- **SIM-22. The party's names come from the library alone (FB2-KC-01, LibKa0s#104).** On Retail,
+  `/kcd sim start pull` and step through → the party is still **Sampleblade**, **Samplehunter**,
+  **Mockflame** and **Mockshield**, in the same order of kicks as SIM-20. On WoW Forever,
+  `/kcd sim start pull` → the kicks are **Mockflame Samplewick**'s Counterspell and **Mockshield
+  Sampleforge**'s Shield Bash, taking turns. `/kcd sim start leave` → the Warrior leaves on both
+  clients. Fail: a different name, a lua error naming `modules/SimScenario.lua`, or a step label with a
+  blank name. Result:
 
 ## DIAG
 
@@ -2098,3 +2115,5 @@ The skin-defaults run (SD-RV-KC of Ka0sAddonsCommonTasks `docs/2026-11-20-LIBKA0
 The strip right-click run (SRC-KC-01 and SRC-KC-02 of Ka0sAddonsCommonTasks `docs/2026-11-23-STRIP_RIGHT_CLICK/`, LibKa0s v1.111.0, standard v2.118.0's *A right-click opens what the gear opens*) drops both strips' `onRightClick`, so a right-click on either strip or any of its marks opens the gear's page, this display's entry on the Units page, instead of the parent page: it adds GRID-26 and CAST-22 and amends GRID-23, CAST-11 and CAST-20. Owed: GRID-23, GRID-26, CAST-11, CAST-20, CAST-22.
 
 The feedback batch (FB-KC-01 of Ka0sAddonsCommonTasks `docs/2026-11-24-FEEDBACK_BATCH/`, LibKa0s v1.112.0, standard v2.119.0's options-ui-§17 ladder and preview stand-in) makes every "Use class color" HUD color follow a class that resolved, then the skin's color, then the swatch, resolves the player while unlocked or in Sim mode, and repaints the label and the cast bar's colors on a target or focus swap: it adds LABEL-16, LABEL-17 and CAST-23. The re-vendor drops High Contrast's HUD shadow to 1, -1, so SKIN-50's High Contrast step now reads a 1 px shadow, and turns the library copy window into a companion with the close alone (DIAG copy-window checks see no gear on it). Owed: LABEL-16, LABEL-17, CAST-23, SKIN-50.
+
+The feedback batch round 2 (FB2-KC-01 of Ka0sAddonsCommonTasks `docs/2026-11-24-FEEDBACK_BATCH/R2_SMOKE_FEEDBACK.md`, LibKa0s v1.113.0, standard v2.120.0) leaves the step panel to the library, which now opens it on every start, and drops the simulator's own copy of the sample characters: it adds SIM-21 and SIM-22. Owed: SIM-21, SIM-22.
