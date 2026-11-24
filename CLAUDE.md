@@ -37,7 +37,7 @@ Start here, then read the docs:
   style, chat output, saved variables, line endings).
 - Topic detail in `docs/` as needed (`schema.md`, `settings-panel.md`, `smoke-tests.md`, …).
 
-Green gate before every commit: `lua tests/run.lua`, `KA0S_KIT_CLIENT=forever lua tests/run.lua` (Retail and WoW Forever, both 0 failed; clients-§6) and `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` (0/0; the kit bounds the suite on load, and `luacheck` loads no kit, so it runs through the bounded runner, testing-§15). Never auto-stage/commit/push and never bump the version without an explicit instruction.
+Green gate before every commit: `lua tests/run.lua`, `KA0S_KIT_CLIENT=forever lua tests/run.lua` (Retail and WoW Forever, both 0 failed; clients-§6) and `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` (0/0; the kit bounds the suite on load, and `luacheck` loads no kit, so it runs through the bounded runner, testing-§15) and `python3 -m unittest discover -s tools/seeds -p 'test_*.py'` (the seed contract's own tests, as `docs/validate-seeds.md` → `## Gate` writes them; no network). Never auto-stage/commit/push and never bump the version without an explicit instruction.
 
 Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.113.0 (MIT).
 LibKa0s icons: chevron-down, chevron-up, clear, close, confirm, copy, eye, help, info, move, reset, segment, settings, volume-high.
