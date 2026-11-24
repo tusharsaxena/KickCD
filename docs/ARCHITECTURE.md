@@ -391,8 +391,11 @@ collection's reference adopter, and every piece below copies its shape.
 - **The colors and the shadows (FS-KC-FLIP, the owner's rulings of 2026-11-01, causes D2, D4, D5, D6).**
   Reversing X4, each color and shadow has a **"Use the skin's color"** or **"Use the skin's shadow"**
   bool of its own (fifteen per unit, in each composed block's `extra`, default true), and the HUD draws
-  through `NS.SkinHudColor`: a class color first, then the skin's while the box is ticked, then the
-  stored swatch. Text is `hud.text` (`S.HudTextColor`), the unit label `hud.label` (`S.HudLabelColor`),
+  through `NS.SkinHudColor`: a class color that resolved first, then the skin's while the box is
+  ticked, then the stored swatch, so an unresolved class (an NPC, no target) follows the skin (LibKa0s
+  `FollowColor`, options-ui-§17, FB-KC-01). Unlocked or in Sim mode, a Target or Focus surface with no
+  such unit resolves the player (`NS.ClassStandIn`), and the label and the cast bar's colors repaint on
+  PLAYER_TARGET_CHANGED and PLAYER_FOCUS_CHANGED. Text is `hud.text` (`S.HudTextColor`), the unit label `hud.label` (`S.HudLabelColor`),
   backgrounds `bar.bg`, borders `icon.border`, and the ready glow the owner token `kc.glow`: yellow
   under Ka0s Default, `glow.color` everywhere else, so Ka0s Default keeps every pixel. The charges badge
   has no row and simply follows `hud.text`. Shadows go through `S.HudFont`, the only way a 12.0.7 client

@@ -39,10 +39,15 @@ local ApplyVisibilityMask = Castbar.ApplyVisibilityMask
 -- ---------------------------------------------------------------------------
 
 --- PLAYER_TARGET_CHANGED handler. A target swap requires re-evaluating the
---- target bar's cast state. A disabled / absent target instance is a no-op.
+--- target bar's cast state, and repainting its colors: every "Use class color"
+--- companion on the bar reads the new target's class (FB-KC-01). A disabled /
+--- absent target instance is a no-op.
 function Castbar:OnTargetChanged()
     local inst = instances["target"]
-    if inst and inst.enabled then self:Reevaluate(inst) end
+    if inst and inst.enabled then
+        self:ReskinColors(inst)
+        self:Reevaluate(inst)
+    end
 end
 
 --- PLAYER_FOCUS_CHANGED handler — the focus-unit equivalent of
@@ -50,7 +55,10 @@ end
 --- instance is a cheap no-op here.
 function Castbar:OnFocusChanged()
     local inst = instances["focus"]
-    if inst and inst.enabled then self:Reevaluate(inst) end
+    if inst and inst.enabled then
+        self:ReskinColors(inst)
+        self:Reevaluate(inst)
+    end
 end
 
 -- Re-evaluate every live bar on combat-state transitions so each shows / hides

@@ -262,7 +262,7 @@ end
 -- ── the start and the steps ──────────────────────────────────────────────────────────────────
 
 --- The descriptor's prepare: the world, the two spells, the engine re-polled through the seam, the
---- panel (pinned up), then ready() once. The seam is already on.
+--- strips, then ready() once (the library opens the step panel after it). The seam is already on.
 function Host.Prepare(_, _, _, ready)
     Host.world = NS.SimWorld.Build()
     Host.kick, Host.cc = Host.ResolveSpells()
@@ -273,9 +273,9 @@ function Host.Prepare(_, _, _, ready)
     -- The sim strip docked on each HUD display the session plays on (modules/SimStrip.lua,
     -- AD-88-KC). Guarded: the TOC loads it, but a partial headless load may not.
     if NS.SimStrip then NS.SimStrip:Refresh() end
-    -- The step panel opens beside the grid (Sim-1.0 docks it to the panel's anchorTo), and it stays
-    -- up for the whole session beside the strips (preview-mode: the strip does not replace it).
-    if NS.Sim and NS.Sim.ShowPanel and NS.Sim:ShowPanel() then Host.PinPanel() end
+    -- The step panel is the library's to open: Sim minor 5 shows it on every successful Start, after
+    -- this prepare (FB2-KC-01; LibKa0s v1.113.0, FB2-LK-01). It docks beside the grid (anchorTo) and
+    -- stays up for the whole session beside the strips; the pinning listener below holds it there.
     -- The real world's interference: combat, a loading screen and a group now stop the session.
     Host.ArmWatch()
     debug("world built: kick %s, cc %s", tostring(Host.kick), tostring(Host.cc))
@@ -537,3 +537,15 @@ end)
 -- already gone at the stop's notify), so an open page repaints at once. Helpers is resolved at call
 -- time: settings/ loads after this file, and RefreshScalars is absent until a panel exists.
 NS.Sim:AddListener(refreshScalars)
+
+-- ── the panel pinned for the session (FB2-KC-01) ─────────────────────────────────────────────
+--
+-- Sim minor 5 (LibKa0s v1.113.0) shows the step panel on every successful Start, after prepare and
+-- before it tells its listeners, so the host no longer opens it from Prepare (which, beside the
+-- library's own show, asked twice). The start's notify is the first moment the frame is sure to
+-- exist on every start path (`/kcd sim start`, the panel's Start row and picker, a Restart), so the
+-- pin rides it. Idempotent; the stop's notify answers IsActive() false, and the OnStop step above
+-- unpins.
+NS.Sim:AddListener(function(sim)
+    if sim and sim.IsActive and sim:IsActive() then Host.PinPanel() end
+end)

@@ -742,7 +742,7 @@ Total.
 
 - SimScenario: the four #38 scenarios fill NS.SimHost.SCENARIOS in order, each labeled
 - SimScenario: each party member is a library sample character, its name never localized
-- SimScenario: without LibKa0s the party is a copy of the library's rows
+- SimScenario: without LibKa0s the party is empty, and the load raises nothing
 - TOC: modules/SimScenario.lua loads straight after modules/Sim.lua, under a LOAD-BEARING comment
 - SimScenario: every timeline is pure: two calls answer equal steps and fire nothing
 - SimScenario: the panel's idle preview lists exactly the first scenario's step labels
@@ -754,11 +754,12 @@ Total.
 - Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out
 - Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown
 
-### test_sim_clients.lua (19)
+### test_sim_clients.lua (20)
 
 - Sim (Forever): the party is the samples with a Forever kick, Counterspell and Shield Bash
 - Sim (Forever): a party member is named whole, First Surname (forever-quirks-§4)
-- Sim (Forever): without LibKa0s the party is the same copy of the library's rows
+- Sim (Forever): without LibKa0s the party is empty (no copy of the library's rows)
+- Sim (Forever): the story's kickers are the Mage and the Warrior, picked by class
 - Sim (Retail): the party stays the four Retail kickers, by first name
 - Sim (Forever): every enemy casts a spell WoW Forever has
 - Sim (Retail): the enemies keep Retail's casts
@@ -847,6 +848,24 @@ Total.
 - R7-SIM: the sim window's OnShow and OnHide repaint the open settings page
 - R7-SIM: the launcher's Sim mode entry reads the same rule
 - Reset all settings stops a running sim and never starts an idle one
+
+### test_sim_start_panel.lua (9)
+
+- sim start panel: `/kcd sim start <scenario>` starts and shows the pinned step panel
+- sim start panel: the panel is asked once per start, by the library alone
+- sim start panel: the bare `/kcd sim` shows the panel and starts nothing
+- sim start panel: a typed start after the player closed the panel shows it again
+- sim start panel: a Restart after the panel was hidden mid-run shows it again
+- sim start panel: the panel's Start starts with the panel up and pinned
+- sim start panel: the Master controls Sim mode box opens the panel, and its Start runs pinned
+- sim start panel: the launcher's Sim mode entry (NS.ToggleSim) opens the panel
+- sim start panel: a refused start (the grids unlocked) shows no panel
+
+### test_sample_names.lua (3)
+
+- sample names: no Sample/Mock name literal in the addon's own shipped code
+- sample names: the scan is falsifiable (a planted literal is found, prose and plain words are not)
+- sample names: the scan reads the addon's own files, the simulator's party among them
 
 ### test_debuglog.lua (13)
 
@@ -1785,6 +1804,19 @@ Total.
 - the step creates the record's table on a raw profile with none
 - the step is the same write with the library absent
 
+### test_class_color_follow.lua (10)
+
+- class follow: an unresolved class falls to the skin's color while its companion is on
+- class follow: a class that resolved still comes first, skin companion on or off
+- class follow: the ladder answers four numbers, never the rung's name
+- class follow: unlocked with no target, the Target and Focus labels draw the player's class
+- class follow: locked with no target there is no stand-in; the skin, then the swatch
+- class follow: NS.ClassStandIn is the player while unlocked or in Sim mode, else nil
+- class follow: unlocked with no target, the cast bar's fill, background and time text draw the player's class
+- class follow: a target swap repaints the Target label's class color
+- class follow: a focus swap repaints the Focus label's class color
+- class follow: a target swap reruns the cast bar's colors
+
 ### test_skin_picker.lua (29)
 
 - Skin picker: the spec names this owner, its seams, General's Skin tab, and the unlock eye
@@ -2299,11 +2331,13 @@ Total.
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 28 |
 | test_sim_e2e.lua | 13 |
-| test_sim_clients.lua | 19 |
+| test_sim_clients.lua | 20 |
 | test_probe.lua | 18 |
 | test_client_shape.lua | 9 |
 | test_sim_marker.lua | 21 |
 | test_sim_checkbox.lua | 12 |
+| test_sim_start_panel.lua | 9 |
+| test_sample_names.lua | 3 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -2347,6 +2381,7 @@ Total.
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
 | test_skin_flip.lua | 33 |
+| test_class_color_follow.lua | 10 |
 | test_skin_picker.lua | 29 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
@@ -2380,4 +2415,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1906** |
+| **Total** | **1929** |

@@ -438,15 +438,18 @@ local function ReskinColors(inst, intCfg, unintCfg)
     -- always at the correct fill edge regardless of which one is visible.
     frame.bar.interruptible:SetStatusBarTexture(
         Castbar.FetchStatusBarTexture(Castbar.BarTexture(intCfg)))
+    -- The fill colors carry a meaning and have no skin companion, so they are class, then swatch;
+    -- a preview resolves the player (NS.ClassStandIn, FB-KC-01).
+    local standIn = NS.ClassStandIn()
     frame.bar.interruptible:SetStatusBarColor(
-        NS.ResolveColor(intCfg.barColor, intCfg.useClassColorBar, unit))
+        NS.ResolveColor(intCfg.barColor, intCfg.useClassColorBar, unit, standIn))
     -- The skin's gloss (cause A3), once the bar has its texture. It belongs to the skin's texture, so
     -- a state on the player's own stays plain; a skin change reaches it with no call of ours.
     NS.Skin.BarGloss(frame.bar.interruptible, intCfg.statusBarTextureFromSkin == true)
     frame.bar.uninterruptible:SetStatusBarTexture(
         Castbar.FetchStatusBarTexture(Castbar.BarTexture(unintCfg)))
     frame.bar.uninterruptible:SetStatusBarColor(
-        NS.ResolveColor(unintCfg.barColor, unintCfg.useClassColorBar, unit))
+        NS.ResolveColor(unintCfg.barColor, unintCfg.useClassColorBar, unit, standIn))
     NS.Skin.BarGloss(frame.bar.uninterruptible, unintCfg.statusBarTextureFromSkin == true)
 
     -- The CAST TIME text. Shared across the two states and hardcoded white until
@@ -481,6 +484,16 @@ end
 --- @param force boolean rebuild geometry even if its signature is unchanged.
 ---        EnsureFrame passes true: a fresh frame has no geometry yet, but the
 ---        instance may still carry a matching signature from a previous frame.
+--- The color half alone, for a unit swap (FB-KC-01): a target or focus change moves the class every
+--- "Use class color" companion on this bar reads, and nothing else. Plain values, no curve, so it is
+--- a handful of widget calls and legal in combat; a bar not built yet has nothing to repaint.
+function Castbar:ReskinColors(inst)
+    if not (inst and inst.frame) then return end
+    local c = NS.Units.Castbar(inst.unit)
+    ReskinColors(inst, self.StateConfig(c, "interruptible", self.INT_FALLBACK),
+        self.StateConfig(c, "uninterruptible", self.UNINT_FALLBACK))
+end
+
 function Castbar:Reskin(inst, force)
     local frame = inst.frame
     if not frame then return end

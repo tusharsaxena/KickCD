@@ -145,6 +145,17 @@ if not lib then
         return NS.Util.Unpack(stored)
     end
 
+    -- The ladder (FB-KC-01), degraded: no class is ever resolvable, so rung 1 is skipped and the
+    -- skin rung is whatever the (degraded) facade member answers, else the stored swatch.
+    function NS.FollowColor(stored, _, _, fromSkin, skinReader, token)
+        local r, g, b, a = NS.Util.Unpack(stored)
+        if fromSkin == true and type(skinReader) == "function" then
+            local sr, sg, sb, sa = skinReader(token)
+            if type(sr) == "number" then return sr, sg, sb, type(sa) == "number" and sa or a end
+        end
+        return r, g, b, a
+    end
+
     -- The pcalled event registration helper (Core version 8). ONE-RUNG bodies,
     -- as that version's Degradation note requires: the pcall and the
     -- rejected-list append, no IsEventValid front gate and no probe frame. The
@@ -217,6 +228,10 @@ NS.SafeRegisterEvents    = lib.SafeRegisterEvents
 -- Target's, the unit being drawn is Focus, and it is the RENDERING unit whose
 -- class the reader is looking at.
 NS.ResolveColor = lib.ResolveColor
+-- The ladder every HUD color follows (LibKa0s Core minor 20, options-ui-§17): a class color that
+-- resolved, then the skin's while its companion is on, then the swatch. core/SkinSetup.lua's
+-- NS.SkinHudColor is its one caller, with the preview stand-in.
+NS.FollowColor = lib.FollowColor
 
 -- WRAPPED, TO SAY WHO IS ASKING — and the only seam here that is wrapped rather
 -- than handed over. LibKa0s draws this collection's own `close` mark when it is

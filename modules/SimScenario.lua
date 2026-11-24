@@ -46,15 +46,14 @@ local SC = NS.SimScenario
 -- tests; the drivers name the spec in the client's own words from `specID`
 -- (NS.Util.SpecDisplayName). Keyed by the sample's name, lowercased.
 --
--- FALLBACK. Without the library the sim cannot run (core/SimSetup.lua's stub refuses it), but the
--- table is still built at load, so it is built from a copy of the library's rows (Sim
--- version-3.3.11.4 docs, *The data*), one set per client as the library keeps them: Retail's carry a
--- specID, WoW Forever's a surname and a talent tree instead (preview-mode; forever-quirks-§4).
--- tests/test_sim_e2e.lua holds the copy to the library's set on both kit profiles.
+-- NO COPY OF OUR OWN (FB2-KC-01; LibKa0s#104, decision D1; preview-mode, standard v2.120.0): every
+-- named sample person comes from the library, so this file keeps no list of names and no fallback
+-- copy. Without the library the sim cannot run (core/SimSetup.lua's stub refuses it) and the party
+-- is empty. The story picks its kickers by CLASS, never by a name typed here.
 --
 -- PER CLIENT (the WoW Forever port, MKF-KC-15; the synthesis 3.4 "Sim"). Each client's kick by
 -- class: WoW Forever's Hunters and Paladins reach no interrupt (the research's FC 54), so its party
--- is Mockflame and Mockshield, and the Protection sample carries a shield, so his kick is Shield
+-- is the Mage and the Warrior, and the Protection sample carries a shield, so his kick is Shield
 -- Bash 72 rather than Pummel, which wants Berserker Stance there. Picked once, by the client key.
 local KICKS_BY_CLIENT = {
     retail = {
@@ -68,22 +67,6 @@ local KICKS_BY_CLIENT = {
         WARRIOR = 72,     -- Shield Bash
     },
 }
-local SAMPLE_COPY = {
-    retail = {
-        { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", specID = 253 },
-        { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   specID = 70 },
-        { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          specID = 63 },
-        { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          specID = 257 },
-        { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    specID = 73 },
-    },
-    forever = {
-        { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", surname = "Mockstride", tree = 1 },
-        { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   surname = "Mockvale", tree = 3 },
-        { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          surname = "Samplewick", tree = 2 },
-        { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          surname = "Mockbrook", tree = 2 },
-        { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    surname = "Sampleforge", tree = 3 },
-    },
-}
 
 --- "forever" on WoW Forever, else "retail": the key every per-client table below is picked by, as
 --- the library picks its sample set (Retail's on a client that is neither).
@@ -94,11 +77,11 @@ local function clientKey()
 end
 SC.CLIENT = clientKey()
 
---- The sample rows for the running client: the library's copy, or ours without it.
+--- The sample rows for the running client, the library's own copy; none without the library.
 local function sampleRows()
     local Sim = LibStub and LibStub("LibKa0s-Sim-1.0", true)
     if Sim and Sim.Sample then return Sim.Sample() end
-    return SAMPLE_COPY[SC.CLIENT]
+    return {}
 end
 
 --- How a member is named in a `[sim]` line: the first name on Retail, the whole character name on
@@ -124,13 +107,24 @@ local function buildParty()
 end
 SC.PARTY = buildParty()
 
--- Which member kicks at each party step of the story, per client: Retail's four kickers, and on WoW
--- Forever the two the party has, taking turns (every timeline names a member of SC.PARTY).
-local KICKERS_BY_CLIENT = {
-    retail  = { first = "sampleblade", second = "samplehunter", third = "mockflame", tank = "mockshield" },
-    forever = { first = "mockflame",   second = "mockshield",   third = "mockflame", tank = "mockshield" },
+-- Which member kicks at each party step of the story, per client, by the sample's class: Retail's
+-- four kickers (the Paladin, the Hunter, the Mage, the Warrior tank), and on WoW Forever the two the
+-- party has, the Mage and the Warrior, taking turns (every timeline names a member of SC.PARTY).
+local KICKER_CLASSES = {
+    retail  = { first = "PALADIN", second = "HUNTER",  third = "MAGE", tank = "WARRIOR" },
+    forever = { first = "MAGE",    second = "WARRIOR", third = "MAGE", tank = "WARRIOR" },
 }
-local KICKER = KICKERS_BY_CLIENT[SC.CLIENT]
+
+--- The SC.PARTY key of the member of class `classFile`, or nil (no library, so no party).
+local function memberOfClass(classFile)
+    for key, row in pairs(SC.PARTY) do
+        if row.class == classFile then return key end
+    end
+    return nil
+end
+
+local KICKER = {}
+for role, classFile in pairs(KICKER_CLASSES[SC.CLIENT]) do KICKER[role] = memberOfClass(classFile) end
 
 --- The enemies, with the spellIDs of the casts each makes (real spells, read for their names and
 --- textures through NS.Compat.GetSpellInfo when the cast starts).

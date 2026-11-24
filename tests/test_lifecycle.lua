@@ -109,8 +109,9 @@ test("kit reach: module game events are recorded, validated and fireable", funct
     local ig = inst.NS:GetModule("IconGrid")
     assertEqual(ig.__events["PLAYER_TARGET_CHANGED"], "OnTargetChanged",
         "the event half must record what IconGrid:OnEnable registered")
-    assertEqual(inst.mocks.__fireEvent("PLAYER_TARGET_CHANGED"), 2,
-        "IconGrid and Castbar are the two registrants")
+    -- UnitLabel joined in FB-KC-01: a target swap repaints its class color.
+    assertEqual(inst.mocks.__fireEvent("PLAYER_TARGET_CHANGED"), 3,
+        "IconGrid, Castbar and UnitLabel are the three registrants")
     local ok = pcall(ig.RegisterEvent, ig, "PLAYER_LOGIN", "NoSuchHandler")
     assertTrue(not ok, "a method the target does not carry must be refused, as CallbackHandler refuses it")
 end)
