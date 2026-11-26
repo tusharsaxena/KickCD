@@ -56,6 +56,7 @@ The whole contributor toolchain. There is no build step and no compiler.
 | **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua` (the case *no addon file emits a bare "secret" sentinel of its own*) and `tests/test_slash_style.lua`'s `luaFiles` enumerate source files with `io.popen("ls ...")`, and `tests/test_doc_structure.lua`'s `bundleFiles` lists the audit bundles the same way; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
 | **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh`'s shebang is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
 | **lizard** | any recent (1.24.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). The harness also runs the kit's `test_lizard_sighted` (its row in `tests/run.lua`'s suite list), whose end-to-end case shells out to `lizard` and skips when it is not on `PATH`. **Optional** — absent `lizard` means the report is stale and one case skips, not that the addon is broken. |
+| **python3** | **3.8+**, standard library only | `CLAUDE.md`'s green gate runs `python3 -m unittest discover -s tools/seeds -p 'test_*.py'` (SF-GATE-01): the seed tool's offline tests (`tools/seeds/test_seeds.py`, `tools/seeds/test_forever.py`). 3.8 is the floor `tools/seeds/seeds.py`'s `from __future__ import annotations` sets. Ubuntu 24.04 ships it, so there is nothing to install. The seed check itself, and its network needs, are in [Release / assets](#release--assets). |
 
 `file` is worth having for one documented troubleshooting path — `docs/testing.md`, *When these diffs are supposed to be non-empty*, uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
@@ -99,6 +100,7 @@ lua -v                # Lua 5.1.x   <- must say 5.1
 lua5.1 -v             # Lua 5.1.x
 luacheck --version    # Luacheck: 1.x  /  Lua: PUC-Rio Lua 5.1
 lizard --version      # 1.x
+python3 --version     # Python 3.8 or newer
 git --version         # git version 2.x
 diff --version        # diffutils
 ```
@@ -155,11 +157,13 @@ and open a PR with only the Development group installed.
   `KickCD-seed-validation` User-Agent, because the site answers urllib's default with HTTP 403) and
   caches about 75 MB a build in the git-ignored `tools/seeds/.cache/`. A frozen bundle under
   `docs/seed-research/` replays offline. Its tests are `python3 -m unittest discover -s tools/seeds
-  -p 'test_*.py'`, offline. Not part of `CLAUDE.md`'s green gate, and not needed to build, run or
-  test the addon; `.pkgmeta` keeps `tools/` out of the package.
-- **No Node.** Stated positively so nobody goes looking. Python appears three times and all are
-  optional: `lizard` in Development above, Pillow for the logo recipe, and the seed check just
-  above.
+  -p 'test_*.py'`, offline, and they **are** part of `CLAUDE.md`'s green gate (SF-GATE-01), so a
+  contributor needs `python3` 3.8+ (Ubuntu 24.04 ships it; `python3 --version`) even without
+  running the seed check itself. The network and wago.tools are needed only for a run that is not
+  `--replay`; `.pkgmeta` keeps `tools/` out of the package.
+- **No Node.** Stated positively so nobody goes looking. Python appears three times: `lizard` in Development
+  above and Pillow for the logo recipe are optional, and the seed check just above is optional
+  apart from its offline tests, which the green gate runs.
 - **The LibKa0s sibling checkout** (`../LibKa0s`) is not software you install, but the vendored-copy
   gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) cannot run without it, and
   `tests/_kit/vendor_sync.lua` degrades to a skip when it is absent. Clone it next to this repo if you touch `libs/LibKa0s/`.

@@ -33,6 +33,8 @@ Start here, then read the docs:
   vendored-copy diffs, the automated-test records and the coverage matrices.
 - **[docs/midnight-quirks.md](docs/midnight-quirks.md)** — required reading before touching
   cooldown, cast or visibility code (12.0 secret values).
+- **[docs/forever-quirks.md](docs/forever-quirks.md)** — the WoW Forever catalog and the addon's
+  own Forever quirks; read it before touching a per-client path (KickCD ships Retail · Forever).
 - **[docs/common-tasks.md](docs/common-tasks.md)** — recipes and house rules (working style, code
   style, chat output, saved variables, line endings).
 - Topic detail in `docs/` as needed (`schema.md`, `settings-panel.md`, `smoke-tests.md`, …).

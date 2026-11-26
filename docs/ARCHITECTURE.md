@@ -539,7 +539,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 | `slash-dispatch.md` | Present | 21 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees and the `sim` verb's grammar |
 | `midnight-quirks.md` | Present | Always: carries the vendored client-quirks catalog (client-quirks-§1), then the addon's own 12.0 secret-value rules and cast-info shims |
 | `forever-quirks.md` | Present | Clients is `Retail · Forever`: carries the vendored Forever catalog (forever-quirks-§1), then the addon's own WoW Forever quirks |
-| `compat-layer.md` | Present | `core/Compat.lua` publishes 16 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
+| `compat-layer.md` | Present | `core/Compat.lua` publishes 21 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
 | `perf-analysis/README.md` | Present | `/kcd perf` exists (`LibKa0s-Perf-1.0`, `core/PerfSetup.lua`), so in-game captures have a store to describe |
@@ -551,7 +551,6 @@ when in doubt, which fetches the living standard and writes a fresh one.
 |---|---|
 | `testing.md` | How to run the harness and lint; the green commit gate |
 | `smoke-tests.md` | The in-game smoke-test suite |
-| `forever-probes.md` | The WoW Forever port's in-game probes: the `/kcd debug probe` verbs, what each recorded kind holds, and the probe sheet with each safe default and an empty `Result:` line |
 | `test-cases.md` | The generated case inventory (authoritative pass count) |
 | `performance.md` | The addon performance page |
 | `automated-tests/README.md` | What the automated-test record is and how to produce it |
@@ -563,7 +562,8 @@ when in doubt, which fetches the living standard and writes a fresh one.
 |---|---|
 | `castbar.md` | The cast bar: skin, layout, and its debug dump |
 | `icon-grid.md` | The icon grid: layout, render, and the C-side alpha curves |
-| `validate-seeds.md` | The seed-validation contract `/dev-copilot:validate-seeds KickCD retail` runs: the tool, its files, the ruling precedent, the steps and the gate |
+| `validate-seeds.md` | The seed-validation contract `/dev-copilot:validate-seeds KickCD retail` (and `forever`) runs: the tool, its files, the ruling precedent, each flavor's steps and the gate |
+| `forever-probes.md` | The WoW Forever port's in-game probes: the `/kcd debug probe` verbs, what each recorded kind holds, and the probe sheet with each safe default and an empty `Result:` line |
 | `seed-research/` | Frozen per-build bundles written by `tools/seeds/seeds.py` (`SOURCES.md`, `candidates.json`, `RULINGS.md`, a hand-written `ANALYSIS.md`, gzipped `raw/` tables); the dated bundles are not enumerated |
 
 ## Documented deviations
