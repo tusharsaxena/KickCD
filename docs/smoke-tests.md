@@ -2135,3 +2135,11 @@ The feedback batch (FB-KC-01 of Ka0sAddonsCommonTasks `docs/2026-11-24-FEEDBACK_
 The feedback batch round 2 (FB2-KC-01 of Ka0sAddonsCommonTasks `docs/2026-11-24-FEEDBACK_BATCH/R2_SMOKE_FEEDBACK.md`, LibKa0s v1.113.0, standard v2.120.0) leaves the step panel to the library, which now opens it on every start, and drops the simulator's own copy of the sample characters: it adds SIM-21 and SIM-22. Owed: SIM-21, SIM-22.
 
 On 2026-11-24 the owner reported that these checks passed on their smoke sheet (a copy of `Ka0sPendingSmoke-2026-11-23.csv`, with the KickCD and Multi Meters port's rows reported in chat), recorded on the owner's word on each `Result:` line as `pass (owner, 2026-11-24)`: from the skin-defaults run (Ka0sAddonsCommonTasks `docs/2026-11-20-LIBKA0S_94_97_99_100/`) SKIN-49 and SKIN-50 on Retail; from the WoW Forever port (Ka0sAddonsCommonTasks `docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/`) SPELLS-19 to SPELLS-24 and FOREVER-1 to FOREVER-16, each on the client it names. A FOREVER check carries its result on the line after its `Result:`, which the theme's doc-shape test keeps empty.
+
+## Help glyph (2026-11-27)
+
+The owner picked the help and missing-icon glyphs (Ka0sAddonsCommonTasks round 6). Unrun.
+
+| ID | Check | Result |
+|---|---|---|
+| GLYPH-1 | Unlock the icon grid and the cast bar: each drag strip shows the **?** help mark as a white filled circle with the question mark cut out (Phosphor `ph:question`), not the bare **?**; hovering it still shows the help tooltip. | |

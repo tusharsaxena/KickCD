@@ -142,7 +142,7 @@ local function buildHandle(inst, frame)
         owner        = addonName,
         label        = handleLabel(inst.unit),
         moveFrame    = frame,
-        helpIcon     = NS.Icon and NS.Icon("help") or nil,
+        helpIcon     = NS.Icon and NS.Icon("ph:question") or nil,
         canDrag      = function() return Castbar.DragAllowed(inst) end,
         onDragStop   = function() Castbar.SaveAnchor(inst, frame) end,
         -- NO onRightClick (SRC-KC-02; standalone-windows, *A right-click opens what the gear
