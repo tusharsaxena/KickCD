@@ -160,8 +160,8 @@ If you've found a bug or want a feature, file it at [https://github.com/tusharsa
 
 ## Credits
 
-The icons come from [Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the **?**
-on the icon grid's and cast bar's drag strips, the drag handles and remove marks on the Spells page,
+The **?** on the icon grid's and cast bar's drag strips is from [Phosphor](https://phosphoricons.com) by Phosphor Icons (MIT, the Fill weight). The other icons come from
+[Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the drag handles and remove marks on the Spells page,
 the settings gear on those strips, the debug console's close, copy and clear buttons, the
 simulator's done check, the skin picker's settings gear and eye, and the small marks LibKa0s draws beside skinned controls.
 

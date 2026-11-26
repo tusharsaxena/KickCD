@@ -162,7 +162,7 @@ local function buildHandle(inst, grid)
         owner        = addonName,
         label        = label,
         moveFrame    = grid,
-        helpIcon     = NS.Icon and NS.Icon("help") or nil,
+        helpIcon     = NS.Icon and NS.Icon("ph:question") or nil,
         canDrag      = function()
             return not (NS.db and NS.db.profile and NS.db.profile.locked)
         end,
