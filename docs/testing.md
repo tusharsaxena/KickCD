@@ -4,7 +4,7 @@ A headless Lua unit harness lives under `tests/` — run `lua tests/run.lua` and
 
 ## Local toolchain
 
-`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, and the only runner beyond `tests/run.lua` is the vendored `tests/_kit/run-automated-tests.sh`, which shells out to the same two commands. Both run from the repo root and are the green commit gate: run them before every commit, alongside the four vendored-copy diffs below (two pairs — the library and the test kit). `lizard` is a third tool, driven by that runner's `complexity` suite, which never fails a run and never gates a commit; the **tag** is gated on all four suites at `pass` plus zero functions above CCN 15 (`automated-tests-§3`), so a missing `lizard` is a skip that leaves a release NOT EVALUATED — optional for a commit, required for a release (see [Automated test records — the consolidated run](#automated-test-records--the-consolidated-run)).
+`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, and the only runner beyond `tests/run.lua` is the vendored `tests/_kit/run-automated-tests.sh`, which shells out to the same two commands. Both run from the repo root and are the green commit gate, beside the seed tool's own offline Python tests ([The seed check's own tests](#the-seed-checks-own-tests)): run them before every commit, alongside the four vendored-copy diffs below (two pairs — the library and the test kit). `lizard` is a third tool, driven by that runner's `complexity` suite, which never fails a run and never gates a commit; the **tag** is gated on all four suites at `pass` plus zero functions above CCN 15 (`automated-tests-§3`), so a missing `lizard` is a skip that leaves a release NOT EVALUATED — optional for a commit, required for a release (see [Automated test records — the consolidated run](#automated-test-records--the-consolidated-run)).
 
 Install instructions for all three, with the WSL2/Ubuntu commands that actually work, live in the root [DEPENDENCIES.md](../DEPENDENCIES.md). That file says *what to install*; this one says *how to verify*.
 
@@ -354,9 +354,8 @@ tiny DB2 fixture in a temporary directory, so they need no network and no cache,
 seed parser, each reach source and spec gate, the evidence rules, every flag kind, both candidate
 groups, the rulings guard and the writer (layout, CRLF, the corrected-id slot, idempotence).
 `test_refuses_while_unruled` was mutation-checked on 2026-11-15: with `plan_apply`'s unruled guard
-disabled it goes red, and restored it passes. They are not part of `CLAUDE.md`'s green gate, which
-is Lua only; the contract's `## Gate` runs them beside it, and so should any change under
-`tools/seeds/`.
+disabled it goes red, and restored it passes. They are part of `CLAUDE.md`'s green gate (SF-GATE-01), written
+exactly as the contract's `## Gate` writes them, so they run before every commit.
 
 `tools/seeds/test_forever.py` covers the `forever` flavor (`tools/seeds/forever.py`, MKF-KC-07) on
 a tiny WoW Forever fixture: the flavor's files and product, the per-class reach (a tree line by its
